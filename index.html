@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#E1251B" />
+  <title>Controle Metanoia Radical</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- ============ TELA: ESCOLHA DE MÓDULO ============ -->
+  <section id="tela-modulo" class="tela-modulo">
+    <div class="marca">
+      <img src="logo.png" alt="Metanoia Radical" class="logo-grande"
+           onerror="this.style.display='none';document.getElementById('marca-txt').style.display='block'" />
+      <div id="marca-txt" class="marca-txt" style="display:none">
+        <span class="mt">METANOIA</span><span class="rad">RADICAL</span>
+        <small>Leste de Minas</small>
+      </div>
+    </div>
+    <h1 class="titulo-app">Controle de Estoque</h1>
+    <p class="sub">Escolha o ambiente</p>
+    <div class="modulos">
+      <button class="mod-card mod-logistica" data-modulo="logistica">
+        <span class="mod-ic">📦</span>
+        <span class="mod-nome">Logística</span>
+      </button>
+      <button class="mod-card mod-copa" data-modulo="copa">
+        <span class="mod-ic">🍽️</span>
+        <span class="mod-nome">Copa / Cozinha</span>
+      </button>
+      <button class="mod-card mod-loja" data-modulo="loja">
+        <span class="mod-ic">🛍️</span>
+        <span class="mod-nome">Lojinha</span>
+      </button>
+    </div>
+    <div id="status-inicial" class="status"></div>
+  </section>
+
+  <!-- ============ APP ============ -->
+  <div id="app" class="hidden">
+    <header>
+      <div class="header-marca">
+        <img src="logo.png" alt="Metanoia Radical" class="logo-mini"
+             onerror="this.style.display='none'" />
+        <div class="header-txt">
+          <b>Metanoia Radical</b>
+          <span id="modulo-atual" class="modulo-atual"></span>
+        </div>
+      </div>
+      <div class="header-dir">
+        <span id="status" class="status"></span>
+        <button id="btn-trocar" class="btn-trocar">Trocar</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="produtos">Produtos</button>
+      <button class="tab" data-tab="retirada">Retirada</button>
+      <button class="tab" data-tab="devolucao">Devolução</button>
+      <button class="tab" data-tab="movimentacoes">Movimentações</button>
+      <button class="tab" data-tab="relatorios">Relatórios</button>
+    </nav>
+
+    <!-- PRODUTOS -->
+    <section id="tab-produtos" class="panel active">
+      <h2>Cadastrar produto</h2>
+      <form id="form-produto" class="card">
+        <label>Nome
+          <input name="nome" required placeholder="Ex: Fio flexível 2,5mm" />
+        </label>
+        <div class="row">
+          <label>Tipo
+            <select name="tipo" required>
+              <option value="consumo">Consumo (não volta / volta parcial)</option>
+              <option value="uso">Uso (volta completo)</option>
+            </select>
+          </label>
+          <label>Unidade
+            <input name="unidade" value="un" placeholder="un, m, kg, cx" />
+          </label>
+          <label>Qtd. inicial
+            <input name="qtd" type="number" step="any" min="0" value="0" />
+          </label>
+        </div>
+        <label>Código (vazio = gera automático)
+          <input name="codigo" placeholder="LOG-0001" />
+        </label>
+        <button type="submit">Cadastrar + gerar QR</button>
+      </form>
+
+      <div id="qr-resultado" class="card hidden">
+        <h3>QR do produto <span id="qr-nome"></span></h3>
+        <div id="qrcode"></div>
+        <p class="mono" id="qr-codigo"></p>
+        <button id="btn-imprimir">🖨️ Imprimir etiqueta</button>
+      </div>
+
+      <h2>Estoque atual</h2>
+      <input id="busca-produto" class="busca" placeholder="Filtrar por nome ou código..." />
+      <div id="lista-produtos" class="lista"></div>
+    </section>
+
+    <!-- RETIRADA -->
+    <section id="tab-retirada" class="panel">
+      <h2>Retirada (saída)</h2>
+      <button id="scan-retirada" class="scan-btn">📷 Ler QR</button>
+      <div id="reader-retirada" class="reader"></div>
+      <form id="form-retirada" class="card hidden">
+        <div class="produto-info" id="info-retirada"></div>
+        <label>Para quem
+          <input name="pessoa" required placeholder="Nome de quem retira" />
+        </label>
+        <label>Quantidade
+          <input name="quantidade" type="number" step="any" min="0" required />
+        </label>
+        <label>Observação (opcional)
+          <input name="observacao" placeholder="Ex: obra bloco B" />
+        </label>
+        <button type="submit">Confirmar saída</button>
+      </form>
+    </section>
+
+    <!-- DEVOLUÇÃO -->
+    <section id="tab-devolucao" class="panel">
+      <h2>Devolução (retorno)</h2>
+      <p class="hint">Item de <b>uso</b> volta completo. Item de <b>consumo</b> pode voltar com menos (ex: rolo de 50m volta com 20m).</p>
+      <button id="scan-devolucao" class="scan-btn">📷 Ler QR</button>
+      <div id="reader-devolucao" class="reader"></div>
+      <form id="form-devolucao" class="card hidden">
+        <div class="produto-info" id="info-devolucao"></div>
+        <label>Quem devolve
+          <input name="pessoa" required placeholder="Nome de quem devolve" />
+        </label>
+        <label>Quantidade que voltou
+          <input name="quantidade" type="number" step="any" min="0" required />
+        </label>
+        <label>Observação (opcional)
+          <input name="observacao" placeholder="Ex: sobrou 20m do rolo" />
+        </label>
+        <button type="submit">Confirmar retorno</button>
+      </form>
+    </section>
+
+    <!-- MOVIMENTAÇÕES -->
+    <section id="tab-movimentacoes" class="panel">
+      <h2>Movimentações</h2>
+      <button id="btn-recarregar-mov" class="scan-btn">🔄 Atualizar</button>
+      <div id="lista-mov" class="lista"></div>
+    </section>
+
+    <!-- RELATÓRIOS -->
+    <section id="tab-relatorios" class="panel">
+      <h2>📋 Relatório de Inventário</h2>
+      <p class="hint">O que você tem em estoque agora, neste módulo.</p>
+      <div class="rel-acoes">
+        <button class="btn-sec" data-rel="inv-print">🖨️ Imprimir</button>
+        <button class="btn-sec" data-rel="inv-csv">⬇️ Baixar CSV (Excel)</button>
+      </div>
+      <div id="rel-inventario" class="rel-box"></div>
+
+      <h2>🔁 Relatório de Movimentação</h2>
+      <p class="hint">Entradas e saídas com data e hora. Filtre por período (opcional).</p>
+      <div class="row">
+        <label>De
+          <input id="mov-de" type="date" />
+        </label>
+        <label>Até
+          <input id="mov-ate" type="date" />
+        </label>
+        <label>&nbsp;
+          <button class="btn-sec" id="mov-filtrar">Aplicar filtro</button>
+        </label>
+      </div>
+      <div class="rel-acoes">
+        <button class="btn-sec" data-rel="mov-print">🖨️ Imprimir</button>
+        <button class="btn-sec" data-rel="mov-csv">⬇️ Baixar CSV (Excel)</button>
+      </div>
+      <div id="rel-movimentacao" class="rel-box"></div>
+    </section>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
