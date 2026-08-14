@@ -249,6 +249,8 @@ function configurarUIModulo(mod) {
 
   document.getElementById("venda-extra").style.display = loja ? "" : "none";
   document.getElementById("lbl-preco").style.display = loja ? "" : "none";
+  document.getElementById("lbl-tipo").style.display = loja ? "none" : "";
+  document.getElementById("lbl-unidade").style.display = loja ? "none" : "";
   document.getElementById("dev-normal").style.display = loja ? "none" : "";
   document.getElementById("dev-troca").style.display = loja ? "" : "none";
 
@@ -354,8 +356,8 @@ formProduto.addEventListener("submit", async (e) => {
     modulo: MODULO,
     codigo,
     nome: f.get("nome").trim(),
-    tipo: f.get("tipo"),
-    unidade: (f.get("unidade") || "un").trim(),
+    tipo: ehLoja() ? "consumo" : f.get("tipo"),
+    unidade: ehLoja() ? "un" : (f.get("unidade") || "un").trim(),
     qtd_estoque: Number(f.get("qtd")) || 0,
     preco: Number(f.get("preco")) || 0,
   };
@@ -396,7 +398,7 @@ function imprimirEtiqueta(produto, alvoQR) {
     <img src="${dataUrl}" />
     <h2>${produto.nome}</h2>
     <p><b>${produto.codigo}</b></p>
-    <p>Tipo: ${produto.tipo} | Unidade: ${produto.unidade}</p>
+    <p>${MODULOS[produto.modulo].venda ? "Preço: " + moeda(produto.preco) : "Tipo: " + produto.tipo + " | Unidade: " + produto.unidade}</p>
     <script>window.onload=()=>{window.print()}<\/script>
     </body></html>`);
   w.document.close();
@@ -413,10 +415,11 @@ async function carregarProdutos() {
   );
   const lista = document.getElementById("lista-produtos");
   if (!itens.length) { lista.innerHTML = '<p class="vazio">Nenhum produto neste módulo.</p>'; return; }
+  const loja = ehLoja();
   lista.innerHTML = itens.map((p) => `
     <div class="item">
-      <div class="item-main"><b>${p.nome}</b><span class="badge ${p.tipo}">${p.tipo}</span></div>
-      <div class="item-sub"><span class="mono">${p.codigo}</span> · estoque: <b>${p.qtd_estoque} ${p.unidade}</b></div>
+      <div class="item-main"><b>${p.nome}</b>${loja ? `<span class="badge uso">${moeda(p.preco)}</span>` : `<span class="badge ${p.tipo}">${p.tipo}</span>`}</div>
+      <div class="item-sub"><span class="mono">${p.codigo}</span> · estoque: <b>${p.qtd_estoque}${loja ? "" : " " + p.unidade}</b></div>
       <button class="link" data-qr='${encodeURIComponent(JSON.stringify(p))}'>ver QR</button>
     </div>`).join("");
   lista.querySelectorAll("button[data-qr]").forEach((b) => {
@@ -424,6 +427,72 @@ async function carregarProdutos() {
   });
 }
 document.getElementById("busca-produto").addEventListener("input", carregarProdutos);
+
+// ============================================================
+// IMPORTAÇÃO POR CSV
+// ============================================================
+document.getElementById("btn-modelo-csv").onclick = () => {
+  if (ehLoja())
+    baixarCSV("modelo_lojinha", ["codigo", "nome", "preco", "qtd_estoque"],
+      [["", "Camisa P", "49,90", "10"], ["", "Camisa M", "49,90", "8"]]);
+  else
+    baixarCSV("modelo_" + MODULO, ["codigo", "nome", "tipo", "unidade", "qtd_estoque"],
+      [["", "Fio flexivel 2,5mm", "consumo", "m", "100"], ["", "Furadeira", "uso", "un", "2"]]);
+};
+
+document.getElementById("file-csv").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const texto = await file.text();
+  await importarCSV(texto);
+  e.target.value = "";
+});
+
+function parseLinhaCSV(l, sep) {
+  const out = []; let cur = "", q = false;
+  for (let i = 0; i < l.length; i++) {
+    const c = l[i];
+    if (q) { if (c === '"') { if (l[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else { if (c === '"') q = true; else if (c === sep) { out.push(cur); cur = ""; } else cur += c; }
+  }
+  out.push(cur); return out;
+}
+
+async function importarCSV(texto) {
+  const res = document.getElementById("import-resultado");
+  const linhas = texto.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim());
+  if (linhas.length < 2) { res.textContent = "CSV vazio ou só com cabeçalho."; res.classList.add("erro"); return; }
+  const sep = linhas[0].includes(";") ? ";" : ",";
+  const head = parseLinhaCSV(linhas[0], sep).map((h) => h.trim().toLowerCase());
+  const num = (v) => {
+    let s = String(v || "").trim();
+    if (!s) return 0;
+    if (s.includes(",")) s = s.replace(/\./g, "").replace(",", "."); // BR: . milhar, , decimal
+    return Number(s) || 0;
+  };
+  let ok = 0, erro = 0; const erros = [];
+  res.classList.remove("erro");
+  res.textContent = "Importando...";
+  for (let i = 1; i < linhas.length; i++) {
+    const cols = parseLinhaCSV(linhas[i], sep);
+    const row = {}; head.forEach((h, idx) => (row[h] = (cols[idx] || "").trim()));
+    if (!row.nome) { erro++; continue; }
+    const codigo = row.codigo || (await proximoCodigo());
+    const produto = {
+      modulo: MODULO, codigo,
+      nome: row.nome,
+      tipo: ehLoja() ? "consumo" : (row.tipo || "consumo"),
+      unidade: ehLoja() ? "un" : (row.unidade || "un"),
+      qtd_estoque: num(row.qtd_estoque || row.qtd || row.quantidade),
+      preco: num(row.preco),
+    };
+    try { await db.inserirProduto(produto); ok++; }
+    catch (err) { erro++; if (erros.length < 5) erros.push(row.nome + ": " + err.message); }
+  }
+  res.classList.toggle("erro", erro > 0 && ok === 0);
+  res.textContent = `✅ Importados: ${ok}` + (erro ? ` · falhas: ${erro}${erros.length ? " (" + erros.join("; ") + ")" : ""}` : "");
+  carregarProdutos();
+}
 
 // ============================================================
 // SCANNER QR + entrada manual
@@ -520,9 +589,12 @@ document.getElementById("form-devolucao").addEventListener("submit", async (e) =
 });
 
 function infoProduto(p) {
-  const precoTxt = ehLoja() ? ` · preço: <b>${moeda(p.preco)}</b>` : "";
-  return `<b>${p.nome}</b> <span class="badge ${p.tipo}">${p.tipo}</span><br>
-    <span class="mono">${p.codigo}</span> · estoque: <b>${p.qtd_estoque} ${p.unidade}</b>${precoTxt}`;
+  const loja = ehLoja();
+  const selo = loja ? "" : ` <span class="badge ${p.tipo}">${p.tipo}</span>`;
+  const precoTxt = loja ? ` · preço: <b>${moeda(p.preco)}</b>` : "";
+  const un = loja ? "" : " " + p.unidade;
+  return `<b>${p.nome}</b>${selo}<br>
+    <span class="mono">${p.codigo}</span> · estoque: <b>${p.qtd_estoque}${un}</b>${precoTxt}`;
 }
 async function registrar(tipo, produto, dados) {
   try {
@@ -627,15 +699,23 @@ async function gerarRelatorios() {
 function renderInventario() {
   const box = document.getElementById("rel-inventario");
   if (!cacheInventario.length) { box.innerHTML = '<p class="vazio">Sem produtos.</p>'; return; }
-  const linhas = cacheInventario.map((p) => `
+  const loja = ehLoja();
+  const linhas = cacheInventario.map((p) => loja ? `
+    <tr>
+      <td class="mono">${p.codigo}</td><td>${p.nome}</td><td>${moeda(p.preco)}</td>
+      <td class="${p.qtd_estoque <= 0 ? "zerado" : ""}"><b>${p.qtd_estoque}</b></td>
+    </tr>` : `
     <tr>
       <td class="mono">${p.codigo}</td><td>${p.nome}</td><td>${p.tipo}</td>
       <td>${p.unidade}</td><td class="${p.qtd_estoque <= 0 ? "zerado" : ""}"><b>${p.qtd_estoque}</b></td>
     </tr>`).join("");
+  const cab = loja
+    ? "<th>Código</th><th>Nome</th><th>Preço</th><th>Estoque</th>"
+    : "<th>Código</th><th>Nome</th><th>Tipo</th><th>Un.</th><th>Estoque</th>";
   box.innerHTML = `
     <div class="rel-resumo">Itens cadastrados: <b>${cacheInventario.length}</b></div>
     <div class="tabela-wrap"><table class="tabela">
-      <thead><tr><th>Código</th><th>Nome</th><th>Tipo</th><th>Un.</th><th>Estoque</th></tr></thead>
+      <thead><tr>${cab}</tr></thead>
       <tbody>${linhas}</tbody></table></div>`;
 }
 

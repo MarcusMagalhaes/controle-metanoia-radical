@@ -131,13 +131,13 @@
           <input name="nome" required placeholder="Ex: Fio flexível 2,5mm" />
         </label>
         <div class="row">
-          <label>Tipo
-            <select name="tipo" required>
+          <label id="lbl-tipo">Tipo
+            <select name="tipo">
               <option value="consumo">Consumo (não volta / volta parcial)</option>
               <option value="uso">Uso (volta completo)</option>
             </select>
           </label>
-          <label>Unidade
+          <label id="lbl-unidade">Unidade
             <input name="unidade" value="un" placeholder="un, m, kg, cx" />
           </label>
           <label>Qtd. inicial
@@ -158,6 +158,18 @@
         <div id="qrcode"></div>
         <p class="mono" id="qr-codigo"></p>
         <button id="btn-imprimir">🖨️ Imprimir etiqueta</button>
+      </div>
+
+      <div class="card">
+        <b>Importar vários por CSV</b>
+        <p class="hint" id="import-hint">Baixe o modelo, preencha no Excel e importe. Código em branco = gerado automático.</p>
+        <div class="rel-acoes">
+          <button type="button" class="btn-sec" id="btn-modelo-csv">⬇️ Baixar modelo</button>
+          <label class="btn-sec" style="cursor:pointer">📥 Importar CSV
+            <input type="file" id="file-csv" accept=".csv,text/csv" style="display:none" />
+          </label>
+        </div>
+        <div id="import-resultado" class="status"></div>
       </div>
 
       <h2>Estoque atual</h2>
