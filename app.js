@@ -109,47 +109,181 @@ const SupaDB = {
 };
 
 const db = usaSupabase ? SupaDB : LocalDB;
-const backendLabel = usaSupabase ? "🟢 Nuvem (Supabase)" : "💾 Local (neste aparelho)";
-statusInicial.textContent = "Banco: " + backendLabel;
 
 // ============================================================
-// SELEÇÃO DE MÓDULO
+// AUTENTICAÇÃO + PERFIL (Google SSO via Supabase Auth)
+// ============================================================
+let PERFIL = null, USER = null;
+
+const TELAS = ["tela-carregando", "tela-login", "tela-pendente", "tela-modulo", "tela-usuarios", "app"];
+function mostrarTela(id) {
+  TELAS.forEach((t) => document.getElementById(t).classList.toggle("hidden", t !== id));
+}
+
+const ABAS_POR_NIVEL = {
+  operador: ["retirada", "devolucao"],
+  admin: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios"],
+  admin_geral: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios"],
+};
+function rotuloNivel(n) {
+  return { pendente: "Pendente", operador: "Operador", admin: "Admin do módulo", admin_geral: "Admin geral" }[n] || n;
+}
+
+async function initApp() {
+  if (!usaSupabase) {
+    // Modo local (sem Supabase): sem login, acesso total p/ testar
+    PERFIL = { nivel: "admin_geral", modulo: null, email: "local" };
+    document.getElementById("btn-usuarios").style.display = "none";
+    document.getElementById("user-email").textContent = "local";
+    document.getElementById("btn-trocar").style.display = "";
+    mostrarTela("tela-modulo");
+    return;
+  }
+  sbClient.auth.onAuthStateChange((ev) => {
+    if (ev === "SIGNED_OUT") mostrarTela("tela-login");
+  });
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session) { mostrarTela("tela-login"); return; }
+  USER = session.user;
+  try { PERFIL = await carregarOuCriarPerfil(USER); }
+  catch (e) { document.getElementById("login-erro").textContent = "Erro: " + e.message; mostrarTela("tela-login"); return; }
+  rotear();
+}
+
+async function carregarOuCriarPerfil(user) {
+  let { data, error } = await sbClient.from("perfis").select("*").eq("id", user.id).maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    const novo = { id: user.id, email: user.email, nome: user.user_metadata?.full_name || user.email, nivel: "pendente", modulo: null };
+    const ins = await sbClient.from("perfis").insert(novo).select().single();
+    if (ins.error) throw ins.error;
+    data = ins.data;
+  }
+  return data;
+}
+
+function rotear() {
+  document.getElementById("user-email").textContent = PERFIL.email || USER?.email || "";
+  const ehGeral = PERFIL.nivel === "admin_geral";
+  document.getElementById("btn-trocar").style.display = ehGeral ? "" : "none";
+  document.getElementById("btn-usuarios").style.display = ehGeral ? "" : "none";
+
+  if (PERFIL.nivel === "pendente") {
+    document.getElementById("pendente-email").textContent = PERFIL.email || "";
+    mostrarTela("tela-pendente");
+    return;
+  }
+  if ((PERFIL.nivel === "admin" || PERFIL.nivel === "operador") && !PERFIL.modulo) {
+    document.getElementById("pendente-email").textContent = PERFIL.email || "";
+    document.getElementById("pendente-msg").textContent = "Seu perfil ainda não tem um módulo definido. Fale com um administrador.";
+    mostrarTela("tela-pendente");
+    return;
+  }
+  if (ehGeral) { mostrarTela("tela-modulo"); }
+  else { entrarModulo(PERFIL.modulo); }
+}
+
+// Login Google
+document.getElementById("btn-google").onclick = () =>
+  sbClient.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.href.split("#")[0] } });
+
+// Logout
+async function sair() { if (usaSupabase) await sbClient.auth.signOut(); location.reload(); }
+document.getElementById("btn-sair").onclick = sair;
+document.getElementById("btn-sair-app").onclick = sair;
+document.getElementById("btn-sair-pendente").onclick = sair;
+
+// ============================================================
+// SELEÇÃO DE MÓDULO + ABAS POR PAPEL
 // ============================================================
 document.querySelectorAll(".mod-card").forEach((card) => {
   card.addEventListener("click", () => entrarModulo(card.dataset.modulo));
 });
 
+function aplicarAbas(nivel) {
+  const abas = ABAS_POR_NIVEL[nivel] || [];
+  document.querySelectorAll(".tab").forEach((t) => {
+    t.style.display = abas.includes(t.dataset.tab) ? "" : "none";
+  });
+  ativarAba(abas[0]);
+}
+
+function ativarAba(nome) {
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === nome));
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  document.getElementById("tab-" + nome).classList.add("active");
+  pararScanners();
+  if (nome === "produtos") carregarProdutos();
+  if (nome === "movimentacoes") carregarMovimentacoes();
+  if (nome === "relatorios") gerarRelatorios();
+}
+
 function entrarModulo(mod) {
   MODULO = mod;
   document.body.dataset.modulo = mod;
   document.getElementById("modulo-atual").textContent = MODULOS[mod].icone + " " + MODULOS[mod].nome;
-  document.getElementById("tela-modulo").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  statusEl.textContent = backendLabel;
-  carregarProdutos();
+  mostrarTela("app");
+  statusEl.textContent = "";
+  aplicarAbas(PERFIL ? PERFIL.nivel : "admin_geral");
 }
 
 document.getElementById("btn-trocar").addEventListener("click", () => {
+  if (!PERFIL || PERFIL.nivel !== "admin_geral") return;
   pararScanners();
   MODULO = null;
-  document.getElementById("app").classList.add("hidden");
-  document.getElementById("tela-modulo").classList.remove("hidden");
+  mostrarTela("tela-modulo");
 });
+
+// ============================================================
+// GESTÃO DE USUÁRIOS (só admin_geral)
+// ============================================================
+document.getElementById("btn-usuarios").onclick = abrirUsuarios;
+document.getElementById("btn-voltar-usuarios").onclick = () => mostrarTela("tela-modulo");
+
+async function abrirUsuarios() {
+  mostrarTela("tela-usuarios");
+  const box = document.getElementById("lista-usuarios");
+  box.innerHTML = '<p class="vazio">Carregando...</p>';
+  const { data, error } = await sbClient.from("perfis").select("*").order("criado_em");
+  if (error) { box.innerHTML = '<p class="vazio">Erro: ' + error.message + "</p>"; return; }
+  if (!data.length) { box.innerHTML = '<p class="vazio">Nenhum usuário ainda.</p>'; return; }
+  box.innerHTML = data.map(linhaUsuario).join("");
+  box.querySelectorAll("[data-salvar]").forEach((b) => (b.onclick = () => salvarUsuario(b.dataset.salvar)));
+}
+
+function linhaUsuario(u) {
+  const niveis = ["pendente", "operador", "admin", "admin_geral"];
+  const mods = ["", "logistica", "copa", "loja"];
+  const optN = niveis.map((n) => `<option value="${n}" ${u.nivel === n ? "selected" : ""}>${rotuloNivel(n)}</option>`).join("");
+  const optM = mods.map((m) => `<option value="${m}" ${(u.modulo || "") === m ? "selected" : ""}>${m ? MODULOS[m].nome : "—"}</option>`).join("");
+  const pend = u.nivel === "pendente";
+  return `<div class="item">
+    <div class="item-main"><b>${u.nome || u.email}</b>
+      <span class="badge ${pend ? "consumo" : "uso"}">${rotuloNivel(u.nivel)}</span></div>
+    <div class="item-sub">${u.email}</div>
+    <div class="row" style="margin-top:8px">
+      <label>Papel<select id="niv-${u.id}">${optN}</select></label>
+      <label>Módulo<select id="mod-${u.id}">${optM}</select></label>
+      <label style="flex:0 0 auto">&nbsp;<button class="btn-sec" data-salvar="${u.id}">Salvar</button></label>
+    </div>
+  </div>`;
+}
+
+async function salvarUsuario(id) {
+  const nivel = document.getElementById("niv-" + id).value;
+  let modulo = document.getElementById("mod-" + id).value || null;
+  if (nivel === "admin_geral" || nivel === "pendente") modulo = null;
+  if ((nivel === "admin" || nivel === "operador") && !modulo) { alert("Escolha o módulo para Admin/Operador."); return; }
+  const { error } = await sbClient.from("perfis").update({ nivel, modulo }).eq("id", id);
+  if (error) { alert("Erro: " + error.message); return; }
+  abrirUsuarios();
+}
 
 // ============================================================
 // Navegação por abas
 // ============================================================
 document.querySelectorAll(".tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-    tab.classList.add("active");
-    document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
-    if (tab.dataset.tab === "produtos") carregarProdutos();
-    if (tab.dataset.tab === "movimentacoes") carregarMovimentacoes();
-    if (tab.dataset.tab === "relatorios") gerarRelatorios();
-    pararScanners();
-  });
+  tab.addEventListener("click", () => ativarAba(tab.dataset.tab));
 });
 
 // ============================================================
@@ -158,7 +292,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
 function msg(texto, erro = false) {
   statusEl.textContent = texto;
   statusEl.classList.toggle("erro", erro);
-  if (!erro) setTimeout(() => (statusEl.textContent = backendLabel), 3000);
+  if (!erro) setTimeout(() => (statusEl.textContent = ""), 3000);
 }
 
 async function proximoCodigo() {
@@ -480,3 +614,8 @@ function baixarCSV(nomeArquivo, cabecalho, linhas) {
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
+
+// ============================================================
+// START
+// ============================================================
+initApp();

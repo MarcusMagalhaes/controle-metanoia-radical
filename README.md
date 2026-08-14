@@ -19,6 +19,34 @@ Onde ficam os dados: no navegador **deste aparelho**. Cada navegador/PC tem o se
 
 ---
 
+## Login e perfis (Google SSO)
+Quando o Supabase está ligado, o app exige **login com Google** e controla acesso por papel:
+- **admin_geral** — acessa tudo, os 3 módulos + tela *Usuários*.
+- **admin** (de um módulo) — tudo, só do módulo dele.
+- **operador** (de um módulo) — só *Retirada* e *Devolução*, só do módulo dele.
+- **pendente** — recém-entrou, sem acesso; vê tela "aguardando liberação" até um admin_geral ajustar.
+
+### Configurar o login (uma vez) — arquivo `auth-perfis.sql`
+1. **Google Cloud** (console.cloud.google.com): crie um projeto → *APIs e Serviços* → *Tela de consentimento OAuth* (External, preencha nome/e-mail) → *Credenciais* → **Criar credenciais** → **ID do cliente OAuth** → tipo **Aplicativo da Web**.
+   - *Origens JavaScript autorizadas*: `https://apluerrzjiijhhlkyumq.supabase.co` e `https://marcusmagalhaes.github.io`
+   - *URIs de redirecionamento autorizados*: `https://apluerrzjiijhhlkyumq.supabase.co/auth/v1/callback`
+   - Copie **Client ID** e **Client Secret**.
+2. **Supabase** → *Authentication* → *Providers* → **Google** → ative → cole Client ID + Secret → Save.
+3. **Supabase** → *Authentication* → *URL Configuration*:
+   - *Site URL*: `https://marcusmagalhaes.github.io/controle-metanoia-radical/`
+   - *Redirect URLs*: adicione `https://marcusmagalhaes.github.io/controle-metanoia-radical/**`
+4. **Supabase** → *SQL Editor* → rode todo o `auth-perfis.sql` (cria tabela `perfis` e trava o acesso por papel).
+5. Suba os arquivos novos no GitHub e abra o site. Faça **login com Google** — você entra como *pendente*.
+6. Vire admin: *SQL Editor* → rode (troque pelo seu e-mail):
+   ```sql
+   update perfis set nivel='admin_geral', modulo=null where email='SEU_EMAIL@gmail.com';
+   ```
+7. Recarregue o site. Agora você é **admin_geral** → botão *Gerenciar usuários* pra dar papel aos demais.
+
+> Sem Supabase configurado (config.js com `COLE...`), o app roda em modo local **sem login** (acesso total, só pra testes).
+
+---
+
 ## Três módulos (ambientes)
 Na entrada, escolhe o ambiente: **Logística** (📦, vermelho), **Copa / Cozinha** (🍽️, laranja) ou **Lojinha** (🛍️, verde). Mesma lógica, dados **totalmente separados** por módulo — produtos, estoque e movimentações de um não aparecem no outro. Botão **Trocar** no topo alterna. Códigos com prefixo: `LOG-0001`, `COP-0001`, `LOJ-0001`.
 

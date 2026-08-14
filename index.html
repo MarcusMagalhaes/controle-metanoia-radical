@@ -12,8 +12,46 @@
 </head>
 <body>
 
+  <!-- ============ TELA: CARREGANDO ============ -->
+  <section id="tela-carregando" class="tela-modulo">
+    <p class="sub">Carregando...</p>
+  </section>
+
+  <!-- ============ TELA: LOGIN ============ -->
+  <section id="tela-login" class="tela-modulo hidden">
+    <div class="marca">
+      <img src="logo.png" alt="Metanoia Radical" class="logo-grande"
+           onerror="this.style.display='none';document.getElementById('marca-txt-l').style.display='block'" />
+      <div id="marca-txt-l" class="marca-txt" style="display:none">
+        <span class="mt">METANOIA</span><span class="rad">RADICAL</span>
+        <small>Leste de Minas</small>
+      </div>
+    </div>
+    <h1 class="titulo-app">Controle de Estoque</h1>
+    <p class="sub">Entre para continuar</p>
+    <button id="btn-google" class="btn-google">
+      <span class="g-ic">G</span> Entrar com Google
+    </button>
+    <div id="login-erro" class="status erro"></div>
+  </section>
+
+  <!-- ============ TELA: PENDENTE (sem acesso) ============ -->
+  <section id="tela-pendente" class="tela-modulo hidden">
+    <div class="marca">
+      <img src="logo.png" alt="Metanoia Radical" class="logo-grande"
+           onerror="this.style.display='none'" />
+    </div>
+    <h1 class="titulo-app">Aguardando liberação</h1>
+    <p id="pendente-msg" class="sub" style="max-width:420px">
+      Seu acesso foi criado, mas ainda não tem permissões. Um moderador vai ajustar seu perfil.
+      Tente novamente mais tarde.
+    </p>
+    <p class="mono" id="pendente-email"></p>
+    <button id="btn-sair-pendente" class="btn-sec">Sair</button>
+  </section>
+
   <!-- ============ TELA: ESCOLHA DE MÓDULO ============ -->
-  <section id="tela-modulo" class="tela-modulo">
+  <section id="tela-modulo" class="tela-modulo hidden">
     <div class="marca">
       <img src="logo.png" alt="Metanoia Radical" class="logo-grande"
            onerror="this.style.display='none';document.getElementById('marca-txt').style.display='block'" />
@@ -39,6 +77,20 @@
       </button>
     </div>
     <div id="status-inicial" class="status"></div>
+    <div class="modulo-rodape">
+      <button id="btn-usuarios" class="btn-sec" style="display:none">👤 Gerenciar usuários</button>
+      <button id="btn-sair" class="btn-link-sair">Sair</button>
+    </div>
+  </section>
+
+  <!-- ============ TELA: USUÁRIOS (admin geral) ============ -->
+  <section id="tela-usuarios" class="tela-usuarios hidden">
+    <div class="usuarios-topo">
+      <button id="btn-voltar-usuarios" class="btn-sec">← Voltar</button>
+      <h1 class="titulo-app">Usuários</h1>
+    </div>
+    <p class="sub">Defina o papel e o módulo de cada pessoa. Novos entram como <b>Pendente</b>.</p>
+    <div id="lista-usuarios" class="lista"></div>
   </section>
 
   <!-- ============ APP ============ -->
@@ -54,7 +106,9 @@
       </div>
       <div class="header-dir">
         <span id="status" class="status"></span>
+        <span id="user-email" class="user-email"></span>
         <button id="btn-trocar" class="btn-trocar">Trocar</button>
+        <button id="btn-sair-app" class="btn-trocar btn-sair2">Sair</button>
       </div>
     </header>
 
