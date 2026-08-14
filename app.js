@@ -10,8 +10,10 @@ const statusInicial = document.getElementById("status-inicial");
 const MODULOS = {
   logistica: { nome: "Logística", prefixo: "LOG", icone: "📦" },
   copa: { nome: "Copa / Cozinha", prefixo: "COP", icone: "🍽️" },
-  loja: { nome: "Lojinha", prefixo: "LOJ", icone: "🛍️" },
+  loja: { nome: "Lojinha", prefixo: "LOJ", icone: "🛍️", venda: true },
 };
+const ehLoja = () => MODULO && MODULOS[MODULO] && MODULOS[MODULO].venda === true;
+const moeda = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 let MODULO = null;
 
@@ -216,6 +218,7 @@ function ativarAba(nome) {
   if (nome === "produtos") carregarProdutos();
   if (nome === "movimentacoes") carregarMovimentacoes();
   if (nome === "relatorios") gerarRelatorios();
+  if (nome === "caixa") gerarCaixa();
 }
 
 function entrarModulo(mod) {
@@ -225,6 +228,39 @@ function entrarModulo(mod) {
   mostrarTela("app");
   statusEl.textContent = "";
   aplicarAbas(PERFIL ? PERFIL.nivel : "admin_geral");
+  configurarUIModulo(mod);
+}
+
+function setTabLabel(tab, label) {
+  const el = document.querySelector('.tab[data-tab="' + tab + '"]');
+  if (el) el.textContent = label;
+}
+
+// Ajusta a interface conforme o módulo (Lojinha = venda/troca/caixa)
+function configurarUIModulo(mod) {
+  const loja = MODULOS[mod].venda === true;
+  const nivel = PERFIL ? PERFIL.nivel : "admin_geral";
+
+  setTabLabel("retirada", loja ? "Venda" : "Retirada");
+  setTabLabel("devolucao", loja ? "Troca" : "Devolução");
+  document.getElementById("h-retirada").textContent = loja ? "Venda" : "Retirada (saída)";
+  document.getElementById("h-devolucao").textContent = loja ? "Troca" : "Devolução (retorno)";
+  document.getElementById("btn-confirma-ret").textContent = loja ? "Confirmar venda" : "Confirmar saída";
+
+  document.getElementById("venda-extra").style.display = loja ? "" : "none";
+  document.getElementById("lbl-preco").style.display = loja ? "" : "none";
+  document.getElementById("dev-normal").style.display = loja ? "none" : "";
+  document.getElementById("dev-troca").style.display = loja ? "" : "none";
+
+  const pessoaInp = document.querySelector('#form-retirada input[name="pessoa"]');
+  document.getElementById("txt-pessoa-ret").textContent = loja ? "Cliente (opcional)" : "Para quem";
+  pessoaInp.required = !loja;
+  pessoaInp.placeholder = loja ? "Nome do cliente" : "Nome de quem retira";
+
+  // aba Caixa: só Lojinha e quem não é operador
+  const podeCaixa = loja && nivel !== "operador";
+  const tabCaixa = document.querySelector('.tab[data-tab="caixa"]');
+  if (tabCaixa) tabCaixa.style.display = podeCaixa ? "" : "none";
 }
 
 document.getElementById("btn-trocar").addEventListener("click", () => {
@@ -321,6 +357,7 @@ formProduto.addEventListener("submit", async (e) => {
     tipo: f.get("tipo"),
     unidade: (f.get("unidade") || "un").trim(),
     qtd_estoque: Number(f.get("qtd")) || 0,
+    preco: Number(f.get("preco")) || 0,
   };
 
   try {
@@ -422,7 +459,21 @@ document.getElementById("scan-retirada").onclick = () =>
     if (!produtoRetirada) return;
     document.getElementById("info-retirada").innerHTML = infoProduto(produtoRetirada);
     document.getElementById("form-retirada").classList.remove("hidden");
+    if (ehLoja()) {
+      const qi = document.querySelector('#form-retirada input[name="quantidade"]');
+      if (!qi.value) qi.value = 1;
+      atualizarValorVenda();
+    }
   });
+
+// Lojinha: valor = preço × quantidade (auto, editável)
+function atualizarValorVenda() {
+  if (!produtoRetirada || !ehLoja()) return;
+  const qtd = Number(document.querySelector('#form-retirada input[name="quantidade"]').value) || 0;
+  document.querySelector('#form-retirada input[name="valor"]').value = (Number(produtoRetirada.preco || 0) * qtd).toFixed(2);
+}
+document.querySelector('#form-retirada input[name="quantidade"]').addEventListener("input", atualizarValorVenda);
+
 document.getElementById("form-retirada").addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!produtoRetirada) return;
@@ -430,10 +481,19 @@ document.getElementById("form-retirada").addEventListener("submit", async (e) =>
   const qtd = Number(f.get("quantidade"));
   if (qtd <= 0) return msg("Quantidade inválida", true);
   if (qtd > produtoRetirada.qtd_estoque) return msg(`Estoque insuficiente (tem ${produtoRetirada.qtd_estoque})`, true);
-  await registrar("saida", produtoRetirada, {
-    pessoa: f.get("pessoa").trim(), quantidade: qtd,
-    observacao: f.get("observacao").trim(), novoEstoque: produtoRetirada.qtd_estoque - qtd,
-  });
+  const loja = ehLoja();
+  const pessoa = (f.get("pessoa") || "").trim() || (loja ? "Consumidor" : "");
+  if (!loja && !pessoa) return msg("Informe para quem", true);
+  const dados = {
+    pessoa, quantidade: qtd,
+    observacao: (f.get("observacao") || "").trim(),
+    novoEstoque: produtoRetirada.qtd_estoque - qtd,
+  };
+  if (loja) {
+    dados.forma_pagamento = f.get("forma_pagamento") || "dinheiro";
+    dados.valor = Number(f.get("valor")) || 0;
+  }
+  await registrar("saida", produtoRetirada, dados);
   e.target.reset(); e.target.classList.add("hidden"); produtoRetirada = null;
 });
 
@@ -460,19 +520,74 @@ document.getElementById("form-devolucao").addEventListener("submit", async (e) =
 });
 
 function infoProduto(p) {
+  const precoTxt = ehLoja() ? ` · preço: <b>${moeda(p.preco)}</b>` : "";
   return `<b>${p.nome}</b> <span class="badge ${p.tipo}">${p.tipo}</span><br>
-    <span class="mono">${p.codigo}</span> · estoque atual: <b>${p.qtd_estoque} ${p.unidade}</b>`;
+    <span class="mono">${p.codigo}</span> · estoque: <b>${p.qtd_estoque} ${p.unidade}</b>${precoTxt}`;
 }
 async function registrar(tipo, produto, dados) {
   try {
     await db.inserirMov({
       modulo: MODULO, produto_id: produto.id, tipo,
       pessoa: dados.pessoa, quantidade: dados.quantidade, observacao: dados.observacao || null,
+      forma_pagamento: dados.forma_pagamento || null,
+      valor: dados.valor != null ? dados.valor : null,
     });
     await db.atualizarEstoque(produto.id, dados.novoEstoque);
-    msg(`✅ ${tipo === "saida" ? "Saída" : "Retorno"} registrado. Estoque: ${dados.novoEstoque}`);
+    const ehVenda = ehLoja() && tipo === "saida" && dados.forma_pagamento;
+    const rot = ehVenda ? "Venda" : tipo === "saida" ? "Saída" : "Retorno";
+    msg(`✅ ${rot} registrado. Estoque: ${dados.novoEstoque}`);
   } catch (err) { msg("Erro: " + err.message, true); }
 }
+
+// ============================================================
+// TROCA (só Lojinha): produto devolvido volta, produto novo sai
+// ============================================================
+let produtoTrocaA = null, produtoTrocaB = null;
+document.getElementById("scan-troca-a").onclick = () =>
+  iniciarScanner("troca-a", "reader-troca-a", async (codigo) => {
+    produtoTrocaA = await acharOuAvisar(codigo);
+    if (!produtoTrocaA) return;
+    document.getElementById("info-troca-a").innerHTML = infoProduto(produtoTrocaA);
+  });
+document.getElementById("scan-troca-b").onclick = () =>
+  iniciarScanner("troca-b", "reader-troca-b", async (codigo) => {
+    produtoTrocaB = await acharOuAvisar(codigo);
+    if (!produtoTrocaB) return;
+    document.getElementById("info-troca-b").innerHTML = infoProduto(produtoTrocaB);
+  });
+document.getElementById("form-troca").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!produtoTrocaA || !produtoTrocaB) return msg("Leia os dois produtos (devolvido e novo)", true);
+  const qa = Number(document.getElementById("troca-qtd-a").value) || 0;
+  const qb = Number(document.getElementById("troca-qtd-b").value) || 0;
+  if (qa <= 0 || qb <= 0) return msg("Quantidades inválidas", true);
+  if (qb > produtoTrocaB.qtd_estoque) return msg(`Estoque insuficiente do produto novo (tem ${produtoTrocaB.qtd_estoque})`, true);
+  const cliente = (document.getElementById("troca-cliente").value || "").trim() || "Consumidor";
+  const valor = Number(document.getElementById("troca-valor").value) || 0;
+  const forma = document.getElementById("troca-forma").value || null;
+
+  // 1) produto devolvido volta ao estoque
+  await registrar("retorno", produtoTrocaA, {
+    pessoa: cliente, quantidade: qa,
+    observacao: `Troca: devolveu ${produtoTrocaA.codigo}, levou ${produtoTrocaB.codigo}`,
+    novoEstoque: produtoTrocaA.qtd_estoque + qa,
+  });
+  // 2) produto novo sai (diferença de valor, se houver, entra no caixa)
+  await registrar("saida", produtoTrocaB, {
+    pessoa: cliente, quantidade: qb,
+    observacao: `Troca por ${produtoTrocaA.codigo}`,
+    novoEstoque: produtoTrocaB.qtd_estoque - qb,
+    forma_pagamento: valor > 0 ? forma : null,
+    valor: valor > 0 ? valor : null,
+  });
+  msg("✅ Troca registrada");
+  produtoTrocaA = null; produtoTrocaB = null;
+  document.getElementById("info-troca-a").innerHTML = "—";
+  document.getElementById("info-troca-b").innerHTML = "—";
+  e.target.reset();
+  document.getElementById("troca-qtd-a").value = 1;
+  document.getElementById("troca-qtd-b").value = 1;
+});
 
 // ============================================================
 // MOVIMENTAÇÕES (lista rápida)
@@ -560,21 +675,74 @@ function renderMovimentacao() {
       <tbody>${linhas}</tbody></table></div>`;
 }
 
+// ============================================================
+// CAIXA (só Lojinha) — vendas por forma de pagamento
+// ============================================================
+let cacheCaixa = [];
+const FORMAS = { dinheiro: "Dinheiro", pix: "Pix", debito: "Débito", credito: "Crédito" };
+document.getElementById("caixa-filtrar").onclick = () => gerarCaixa();
+
+async function gerarCaixa() {
+  const de = document.getElementById("caixa-de").value;
+  const ate = document.getElementById("caixa-ate").value;
+  let mov = await db.listarMov(MODULO);
+  mov = mov.filter((m) => m.tipo === "saida" && m.forma_pagamento && m.valor != null);
+  if (de) mov = mov.filter((m) => m.criado_em.slice(0, 10) >= de);
+  if (ate) mov = mov.filter((m) => m.criado_em.slice(0, 10) <= ate);
+  cacheCaixa = mov;
+  renderCaixa();
+}
+
+function renderCaixa() {
+  const box = document.getElementById("rel-caixa");
+  if (!cacheCaixa.length) { box.innerHTML = '<p class="vazio">Nenhuma venda no período.</p>'; return; }
+  const tot = { dinheiro: 0, pix: 0, debito: 0, credito: 0 };
+  let geral = 0;
+  const linhas = cacheCaixa.map((m) => {
+    const p = m.produtos || {};
+    tot[m.forma_pagamento] = (tot[m.forma_pagamento] || 0) + Number(m.valor);
+    geral += Number(m.valor);
+    return `<tr>
+      <td>${fmtData(m.criado_em)}</td>
+      <td>${p.nome || "?"}</td><td class="mono">${p.codigo || ""}</td>
+      <td>${m.quantidade}</td><td><b>${moeda(m.valor)}</b></td>
+      <td>${FORMAS[m.forma_pagamento] || m.forma_pagamento}</td>
+      <td>${m.pessoa}</td>
+    </tr>`;
+  }).join("");
+  const cards = Object.keys(FORMAS).map((k) =>
+    `<span class="caixa-card"><small>${FORMAS[k]}</small><b>${moeda(tot[k])}</b></span>`).join("");
+  box.innerHTML = `
+    <div class="caixa-resumo">${cards}
+      <span class="caixa-card caixa-total"><small>Total (${cacheCaixa.length} vendas)</small><b>${moeda(geral)}</b></span></div>
+    <div class="tabela-wrap"><table class="tabela">
+      <thead><tr><th>Data/Hora</th><th>Produto</th><th>Código</th><th>Qtd</th><th>Valor</th><th>Forma</th><th>Cliente</th></tr></thead>
+      <tbody>${linhas}</tbody></table></div>`;
+}
+
 // ---- Ações de relatório (imprimir / CSV) ----
 document.querySelectorAll("[data-rel]").forEach((b) => {
   b.onclick = () => {
     const nomeMod = MODULOS[MODULO].nome;
     if (b.dataset.rel === "inv-print") imprimirRel("Inventário · " + nomeMod, document.getElementById("rel-inventario").innerHTML);
     if (b.dataset.rel === "mov-print") imprimirRel("Movimentação · " + nomeMod, document.getElementById("rel-movimentacao").innerHTML);
+    if (b.dataset.rel === "caixa-print") imprimirRel("Caixa · " + nomeMod, document.getElementById("rel-caixa").innerHTML);
     if (b.dataset.rel === "inv-csv") baixarCSV("inventario_" + MODULO,
-      ["Codigo", "Nome", "Tipo", "Unidade", "Estoque"],
-      cacheInventario.map((p) => [p.codigo, p.nome, p.tipo, p.unidade, p.qtd_estoque]));
+      ["Codigo", "Nome", "Tipo", "Unidade", "Estoque", "Preco"],
+      cacheInventario.map((p) => [p.codigo, p.nome, p.tipo, p.unidade, p.qtd_estoque, p.preco ?? 0]));
     if (b.dataset.rel === "mov-csv") baixarCSV("movimentacao_" + MODULO,
       ["DataHora", "Movimento", "Produto", "Codigo", "Pessoa", "Quantidade", "Unidade", "Observacao"],
       cacheMov.map((m) => {
         const p = m.produtos || {};
         return [fmtData(m.criado_em), m.tipo === "retorno" ? "Entrada" : "Saida",
           p.nome || "", p.codigo || "", m.pessoa, m.quantidade, p.unidade || "", m.observacao || ""];
+      }));
+    if (b.dataset.rel === "caixa-csv") baixarCSV("caixa_" + MODULO,
+      ["DataHora", "Produto", "Codigo", "Quantidade", "Valor", "Forma", "Cliente"],
+      cacheCaixa.map((m) => {
+        const p = m.produtos || {};
+        return [fmtData(m.criado_em), p.nome || "", p.codigo || "", m.quantidade,
+          Number(m.valor).toFixed(2), FORMAS[m.forma_pagamento] || m.forma_pagamento, m.pessoa];
       }));
   };
 });

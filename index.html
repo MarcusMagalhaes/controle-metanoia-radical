@@ -118,6 +118,7 @@
       <button class="tab" data-tab="devolucao">Devolução</button>
       <button class="tab" data-tab="movimentacoes">Movimentações</button>
       <button class="tab" data-tab="relatorios">Relatórios</button>
+      <button class="tab" data-tab="caixa" style="display:none">Caixa</button>
     </nav>
 
     <!-- PRODUTOS -->
@@ -140,6 +141,9 @@
           <label>Qtd. inicial
             <input name="qtd" type="number" step="any" min="0" value="0" />
           </label>
+          <label id="lbl-preco" style="display:none">Preço de venda (R$)
+            <input name="preco" type="number" step="0.01" min="0" value="0" />
+          </label>
         </div>
         <label>Código (vazio = gera automático)
           <input name="codigo" placeholder="LOG-0001" />
@@ -159,45 +163,109 @@
       <div id="lista-produtos" class="lista"></div>
     </section>
 
-    <!-- RETIRADA -->
+    <!-- RETIRADA / VENDA -->
     <section id="tab-retirada" class="panel">
-      <h2>Retirada (saída)</h2>
+      <h2 id="h-retirada">Retirada (saída)</h2>
       <button id="scan-retirada" class="scan-btn">📷 Ler QR</button>
       <div id="reader-retirada" class="reader"></div>
       <form id="form-retirada" class="card hidden">
         <div class="produto-info" id="info-retirada"></div>
-        <label>Para quem
-          <input name="pessoa" required placeholder="Nome de quem retira" />
+        <label id="lbl-pessoa-ret"><span id="txt-pessoa-ret">Para quem</span>
+          <input name="pessoa" placeholder="Nome de quem retira" />
         </label>
         <label>Quantidade
           <input name="quantidade" type="number" step="any" min="0" required />
         </label>
+        <!-- Só Lojinha: pagamento -->
+        <div id="venda-extra" style="display:none">
+          <label>Forma de pagamento
+            <select name="forma_pagamento">
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">Pix</option>
+              <option value="debito">Débito</option>
+              <option value="credito">Crédito</option>
+            </select>
+          </label>
+          <label>Valor total (R$)
+            <input name="valor" type="number" step="0.01" min="0" />
+          </label>
+        </div>
         <label>Observação (opcional)
           <input name="observacao" placeholder="Ex: obra bloco B" />
         </label>
-        <button type="submit">Confirmar saída</button>
+        <button type="submit" id="btn-confirma-ret">Confirmar saída</button>
       </form>
     </section>
 
-    <!-- DEVOLUÇÃO -->
+    <!-- DEVOLUÇÃO / TROCA -->
     <section id="tab-devolucao" class="panel">
-      <h2>Devolução (retorno)</h2>
-      <p class="hint">Item de <b>uso</b> volta completo. Item de <b>consumo</b> pode voltar com menos (ex: rolo de 50m volta com 20m).</p>
-      <button id="scan-devolucao" class="scan-btn">📷 Ler QR</button>
-      <div id="reader-devolucao" class="reader"></div>
-      <form id="form-devolucao" class="card hidden">
-        <div class="produto-info" id="info-devolucao"></div>
-        <label>Quem devolve
-          <input name="pessoa" required placeholder="Nome de quem devolve" />
-        </label>
-        <label>Quantidade que voltou
-          <input name="quantidade" type="number" step="any" min="0" required />
-        </label>
-        <label>Observação (opcional)
-          <input name="observacao" placeholder="Ex: sobrou 20m do rolo" />
-        </label>
-        <button type="submit">Confirmar retorno</button>
-      </form>
+      <h2 id="h-devolucao">Devolução (retorno)</h2>
+
+      <!-- Modo normal (logística/copa): devolução -->
+      <div id="dev-normal">
+        <p class="hint">Item de <b>uso</b> volta completo. Item de <b>consumo</b> pode voltar com menos (ex: rolo de 50m volta com 20m).</p>
+        <button id="scan-devolucao" class="scan-btn">📷 Ler QR</button>
+        <div id="reader-devolucao" class="reader"></div>
+        <form id="form-devolucao" class="card hidden">
+          <div class="produto-info" id="info-devolucao"></div>
+          <label>Quem devolve
+            <input name="pessoa" required placeholder="Nome de quem devolve" />
+          </label>
+          <label>Quantidade que voltou
+            <input name="quantidade" type="number" step="any" min="0" required />
+          </label>
+          <label>Observação (opcional)
+            <input name="observacao" placeholder="Ex: sobrou 20m do rolo" />
+          </label>
+          <button type="submit">Confirmar retorno</button>
+        </form>
+      </div>
+
+      <!-- Modo loja: troca (produto que voltou -> produto novo) -->
+      <div id="dev-troca" style="display:none">
+        <p class="hint">Troca: leia o produto que o cliente <b>devolveu</b> (volta ao estoque) e o produto <b>novo</b> que está levando (sai do estoque). Ex: camisa P por camisa M.</p>
+
+        <div class="card">
+          <b>1) Produto que voltou</b>
+          <button id="scan-troca-a" class="scan-btn">📷 Ler QR do devolvido</button>
+          <div id="reader-troca-a" class="reader"></div>
+          <div class="produto-info" id="info-troca-a">—</div>
+          <label>Qtd. devolvida
+            <input id="troca-qtd-a" type="number" step="any" min="0" value="1" />
+          </label>
+        </div>
+
+        <div class="card">
+          <b>2) Produto novo (levou)</b>
+          <button id="scan-troca-b" class="scan-btn">📷 Ler QR do novo</button>
+          <div id="reader-troca-b" class="reader"></div>
+          <div class="produto-info" id="info-troca-b">—</div>
+          <label>Qtd. levada
+            <input id="troca-qtd-b" type="number" step="any" min="0" value="1" />
+          </label>
+        </div>
+
+        <form id="form-troca" class="card">
+          <label>Cliente (opcional)
+            <input id="troca-cliente" placeholder="Nome do cliente" />
+          </label>
+          <div class="row">
+            <label>Diferença a pagar (R$, opcional)
+              <input id="troca-valor" type="number" step="0.01" min="0" placeholder="0,00" />
+            </label>
+            <label>Forma (se pagou diferença)
+              <select id="troca-forma">
+                <option value="">—</option>
+                <option value="dinheiro">Dinheiro</option>
+                <option value="pix">Pix</option>
+                <option value="debito">Débito</option>
+                <option value="credito">Crédito</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit">Confirmar troca</button>
+        </form>
+      </div>
     </section>
 
     <!-- MOVIMENTAÇÕES -->
@@ -235,6 +303,28 @@
         <button class="btn-sec" data-rel="mov-csv">⬇️ Baixar CSV (Excel)</button>
       </div>
       <div id="rel-movimentacao" class="rel-box"></div>
+    </section>
+
+    <!-- CAIXA (só Lojinha) -->
+    <section id="tab-caixa" class="panel">
+      <h2>💰 Controle de Caixa</h2>
+      <p class="hint">Vendas por forma de pagamento. Filtre por período (opcional).</p>
+      <div class="row">
+        <label>De
+          <input id="caixa-de" type="date" />
+        </label>
+        <label>Até
+          <input id="caixa-ate" type="date" />
+        </label>
+        <label>&nbsp;
+          <button class="btn-sec" id="caixa-filtrar">Aplicar filtro</button>
+        </label>
+      </div>
+      <div class="rel-acoes">
+        <button class="btn-sec" data-rel="caixa-print">🖨️ Imprimir</button>
+        <button class="btn-sec" data-rel="caixa-csv">⬇️ Baixar CSV (Excel)</button>
+      </div>
+      <div id="rel-caixa" class="rel-box"></div>
     </section>
   </div>
 

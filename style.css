@@ -180,6 +180,17 @@ button:hover { filter: brightness(1.08); }
 .user-email { font-size: 12px; color: var(--suave); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn-sair2 { background: #c9c6bf; color: var(--preto); }
 
+/* ---------- Caixa ---------- */
+.caixa-resumo { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 12px; }
+.caixa-card {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 14px;
+  background: var(--creme-2); border: 1px solid var(--borda); border-radius: 10px; min-width: 110px;
+}
+.caixa-card small { color: var(--suave); font-size: 12px; }
+.caixa-card b { font-size: 16px; color: var(--preto); }
+.caixa-total { background: #e5f3ea; border-color: #bfe3cd; }
+.caixa-total b { color: #1f7a44; }
+
 /* ---------- Tela usuários ---------- */
 .tela-usuarios { padding: 16px; max-width: 640px; margin: 0 auto; }
 .usuarios-topo { display: flex; align-items: center; gap: 12px; margin: 8px 0; }

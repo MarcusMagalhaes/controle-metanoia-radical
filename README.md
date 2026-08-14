@@ -47,6 +47,15 @@ Quando o Supabase está ligado, o app exige **login com Google** e controla aces
 
 ---
 
+## Lojinha = venda (não almoxarifado) — arquivo `loja-venda.sql`
+O módulo **Lojinha** funciona como loja, não como estoque de uso/consumo:
+- **Venda** (a aba "Retirada" vira "Venda"): lê o QR, quantidade, **forma de pagamento** (dinheiro/Pix/débito/crédito) e **valor** (vem automático do preço do produto × qtd, editável).
+- Produto tem campo **Preço de venda**.
+- **Troca** (a aba "Devolução" vira "Troca"): lê o produto **devolvido** (volta ao estoque) e o **novo** (sai do estoque) — ex: camisa P por camisa M. Diferença de valor opcional (entra no caixa).
+- **Caixa** (aba nova, só admin): total por forma de pagamento + lista de vendas, filtro por período, imprimir/CSV.
+
+> ⚠️ Rode `loja-venda.sql` no Supabase **antes** de subir esta versão (adiciona as colunas `preco`, `forma_pagamento`, `valor`). Sem isso, os registros dão erro de "coluna não existe".
+
 ## Três módulos (ambientes)
 Na entrada, escolhe o ambiente: **Logística** (📦, vermelho), **Copa / Cozinha** (🍽️, laranja) ou **Lojinha** (🛍️, verde). Mesma lógica, dados **totalmente separados** por módulo — produtos, estoque e movimentações de um não aparecem no outro. Botão **Trocar** no topo alterna. Códigos com prefixo: `LOG-0001`, `COP-0001`, `LOJ-0001`.
 
