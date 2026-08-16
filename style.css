@@ -13,9 +13,11 @@
   --suave:    #7a6f5c;
   --accent:   var(--vermelho); /* muda por módulo */
 }
-body[data-modulo="logistica"] { --accent: #E1251B; }
-body[data-modulo="copa"]      { --accent: #F58220; }
-body[data-modulo="loja"]      { --accent: #2E8B57; }
+body[data-modulo="logistica"]  { --accent: #E1251B; }
+body[data-modulo="copa"]       { --accent: #F58220; }
+body[data-modulo="loja"]       { --accent: #2E8B57; }
+body[data-modulo="secretaria"] { --accent: #9B6FD4; }
+body[data-modulo="saude"]      { --accent: #8CA0B3; }
 
 * { box-sizing: border-box; }
 body {
@@ -57,6 +59,10 @@ body {
 .mod-copa:hover { background: #fdf1e6; }
 .mod-loja { border-color: #2E8B57; }
 .mod-loja:hover { background: #e7f4ec; }
+.mod-secretaria { border-color: #9B6FD4; }
+.mod-secretaria:hover { background: #f3ecfb; }
+.mod-saude { border-color: #8CA0B3; }
+.mod-saude:hover { background: #eef2f6; }
 
 /* ---------- Header ---------- */
 header {
@@ -179,6 +185,12 @@ button:hover { filter: brightness(1.08); }
 .btn-link-sair:hover { background: none; color: var(--preto); filter: none; }
 .user-email { font-size: 12px; color: var(--suave); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn-sair2 { background: #c9c6bf; color: var(--preto); }
+
+/* ---------- Tarefas / Melhorias ---------- */
+.chk { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+.chk input { width: 18px; height: 18px; flex: 0 0 auto; }
+.item.feito { opacity: .6; }
+.item.feito .chk b { text-decoration: line-through; }
 
 /* ---------- Caixa ---------- */
 .caixa-resumo { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 12px; }

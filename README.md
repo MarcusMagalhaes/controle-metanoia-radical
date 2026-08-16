@@ -56,8 +56,14 @@ O módulo **Lojinha** funciona como loja, não como estoque de uso/consumo:
 
 > ⚠️ Rode `loja-venda.sql` no Supabase **antes** de subir esta versão (adiciona as colunas `preco`, `forma_pagamento`, `valor`). Sem isso, os registros dão erro de "coluna não existe".
 
-## Três módulos (ambientes)
-Na entrada, escolhe o ambiente: **Logística** (📦, vermelho), **Copa / Cozinha** (🍽️, laranja) ou **Lojinha** (🛍️, verde). Mesma lógica, dados **totalmente separados** por módulo — produtos, estoque e movimentações de um não aparecem no outro. Botão **Trocar** no topo alterna. Códigos com prefixo: `LOG-0001`, `COP-0001`, `LOJ-0001`.
+## Módulos (ambientes)
+Na entrada, escolhe o ambiente. Dados **totalmente separados** por módulo. Botão **Trocar** no topo alterna (só admin_geral). Cada um tem um prefixo de código.
+- **Logística** (📦, vermelho) e **Copa / Cozinha** (🍽️, laranja): almoxarifado completo — cadastro, retirada, devolução, movimentações, relatórios.
+- **Lojinha** (🛍️, verde): venda — cadastro com preço, venda com forma de pagamento, troca, caixa.
+- **Secretaria** (🗂️, lilás): estoque só com **cadastro + relação** (sem retirada/devolução) + **Tarefas** (responsável, previsão, check de conclusão) + **Melhorias**.
+- **Saúde** (🏥, cinza-claro): estoque só com **cadastro + relação**.
+
+> Novos módulos precisam do `secretaria-saude.sql` rodado no Supabase (libera os módulos nas constraints e cria as tabelas `tarefas` e `melhorias`).
 
 ## Logo
 A logo é o arquivo **`logo.jpg`** nesta pasta (carregada automático na tela inicial e no cabeçalho). Pra trocar, substitua o `logo.jpg` mantendo o nome.

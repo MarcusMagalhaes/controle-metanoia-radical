@@ -8,9 +8,31 @@ const statusEl = document.getElementById("status");
 const statusInicial = document.getElementById("status-inicial");
 
 const MODULOS = {
-  logistica: { nome: "Logística", prefixo: "LOG", icone: "📦" },
-  copa: { nome: "Copa / Cozinha", prefixo: "COP", icone: "🍽️" },
-  loja: { nome: "Lojinha", prefixo: "LOJ", icone: "🛍️", venda: true },
+  logistica: {
+    nome: "Logística", prefixo: "LOG", icone: "📦", usaTipo: true, usaMov: true,
+    abas: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios"],
+    abasOp: ["retirada", "devolucao"],
+  },
+  copa: {
+    nome: "Copa / Cozinha", prefixo: "COP", icone: "🍽️", usaTipo: true, usaMov: true,
+    abas: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios"],
+    abasOp: ["retirada", "devolucao"],
+  },
+  loja: {
+    nome: "Lojinha", prefixo: "LOJ", icone: "🛍️", venda: true, usaMov: true,
+    abas: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios", "caixa"],
+    abasOp: ["retirada", "devolucao"],
+  },
+  secretaria: {
+    nome: "Secretaria", prefixo: "SEC", icone: "🗂️", usaMov: false,
+    abas: ["produtos", "relatorios", "tarefas", "melhorias"],
+    abasOp: ["tarefas", "melhorias"],
+  },
+  saude: {
+    nome: "Saúde", prefixo: "SAU", icone: "🏥", usaMov: false,
+    abas: ["produtos", "relatorios"],
+    abasOp: ["relatorios"],
+  },
 };
 const ehLoja = () => MODULO && MODULOS[MODULO] && MODULOS[MODULO].venda === true;
 const moeda = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -71,6 +93,27 @@ const LocalDB = {
         return { ...m, produtos: { nome: p.nome, codigo: p.codigo, unidade: p.unidade } };
       });
   },
+  // Tarefas / Melhorias (genérico por chave)
+  async _listar(k, mod) {
+    return this._get(k).filter((x) => x.modulo === mod)
+      .sort((a, b) => (a.concluida - b.concluida) || b.criado_em.localeCompare(a.criado_em));
+  },
+  async _inserir(k, item) {
+    const a = this._get(k); item.id = this._novoId(a); item.criado_em = new Date().toISOString();
+    a.push(item); this._set(k, a); return item;
+  },
+  async _atualizar(k, id, campos) {
+    const a = this._get(k); const x = a.find((y) => y.id === id); if (x) { Object.assign(x, campos); this._set(k, a); }
+  },
+  async _excluir(k, id) { this._set(k, this._get(k).filter((y) => y.id !== id)); },
+  listarTarefas(m) { return this._listar("mr_tarefas", m); },
+  inserirTarefa(t) { return this._inserir("mr_tarefas", t); },
+  atualizarTarefa(id, c) { return this._atualizar("mr_tarefas", id, c); },
+  excluirTarefa(id) { return this._excluir("mr_tarefas", id); },
+  listarMelhorias(m) { return this._listar("mr_melhorias", m); },
+  inserirMelhoria(t) { return this._inserir("mr_melhorias", t); },
+  atualizarMelhoria(id, c) { return this._atualizar("mr_melhorias", id, c); },
+  excluirMelhoria(id) { return this._excluir("mr_melhorias", id); },
 };
 
 // ---------- Banco SUPABASE ----------
@@ -108,6 +151,32 @@ const SupaDB = {
       .eq("modulo", mod).order("criado_em", { ascending: false }).limit(500);
     if (error) throw error; return data || [];
   },
+  // Tarefas / Melhorias
+  async _sbListar(tab, mod) {
+    const { data, error } = await sbClient.from(tab).select("*")
+      .eq("modulo", mod).order("concluida").order("criado_em", { ascending: false });
+    if (error) throw error; return data || [];
+  },
+  async _sbInserir(tab, item) {
+    const { data, error } = await sbClient.from(tab).insert(item).select().single();
+    if (error) throw error; return data;
+  },
+  async _sbAtualizar(tab, id, campos) {
+    const { error } = await sbClient.from(tab).update(campos).eq("id", id);
+    if (error) throw error;
+  },
+  async _sbExcluir(tab, id) {
+    const { error } = await sbClient.from(tab).delete().eq("id", id);
+    if (error) throw error;
+  },
+  listarTarefas(m) { return this._sbListar("tarefas", m); },
+  inserirTarefa(t) { return this._sbInserir("tarefas", t); },
+  atualizarTarefa(id, c) { return this._sbAtualizar("tarefas", id, c); },
+  excluirTarefa(id) { return this._sbExcluir("tarefas", id); },
+  listarMelhorias(m) { return this._sbListar("melhorias", m); },
+  inserirMelhoria(t) { return this._sbInserir("melhorias", t); },
+  atualizarMelhoria(id, c) { return this._sbAtualizar("melhorias", id, c); },
+  excluirMelhoria(id) { return this._sbExcluir("melhorias", id); },
 };
 
 const db = usaSupabase ? SupaDB : LocalDB;
@@ -122,11 +191,6 @@ function mostrarTela(id) {
   TELAS.forEach((t) => document.getElementById(t).classList.toggle("hidden", t !== id));
 }
 
-const ABAS_POR_NIVEL = {
-  operador: ["retirada", "devolucao"],
-  admin: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios"],
-  admin_geral: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios"],
-};
 function rotuloNivel(n) {
   return { pendente: "Pendente", operador: "Operador", admin: "Admin do módulo", admin_geral: "Admin geral" }[n] || n;
 }
@@ -203,11 +267,12 @@ document.querySelectorAll(".mod-card").forEach((card) => {
 });
 
 function aplicarAbas(nivel) {
-  const abas = ABAS_POR_NIVEL[nivel] || [];
+  const mod = MODULOS[MODULO] || {};
+  const abas = nivel === "operador" ? (mod.abasOp || []) : (mod.abas || []);
   document.querySelectorAll(".tab").forEach((t) => {
     t.style.display = abas.includes(t.dataset.tab) ? "" : "none";
   });
-  ativarAba(abas[0]);
+  if (abas.length) ativarAba(abas[0]);
 }
 
 function ativarAba(nome) {
@@ -219,6 +284,8 @@ function ativarAba(nome) {
   if (nome === "movimentacoes") carregarMovimentacoes();
   if (nome === "relatorios") gerarRelatorios();
   if (nome === "caixa") gerarCaixa();
+  if (nome === "tarefas") carregarTarefas();
+  if (nome === "melhorias") carregarMelhorias();
 }
 
 function entrarModulo(mod) {
@@ -236,10 +303,10 @@ function setTabLabel(tab, label) {
   if (el) el.textContent = label;
 }
 
-// Ajusta a interface conforme o módulo (Lojinha = venda/troca/caixa)
+// Ajusta a interface conforme o módulo
 function configurarUIModulo(mod) {
-  const loja = MODULOS[mod].venda === true;
-  const nivel = PERFIL ? PERFIL.nivel : "admin_geral";
+  const M = MODULOS[mod];
+  const loja = M.venda === true;
 
   setTabLabel("retirada", loja ? "Venda" : "Retirada");
   setTabLabel("devolucao", loja ? "Troca" : "Devolução");
@@ -249,20 +316,17 @@ function configurarUIModulo(mod) {
 
   document.getElementById("venda-extra").style.display = loja ? "" : "none";
   document.getElementById("lbl-preco").style.display = loja ? "" : "none";
-  document.getElementById("lbl-tipo").style.display = loja ? "none" : "";
+  document.getElementById("lbl-tipo").style.display = M.usaTipo ? "" : "none";
   document.getElementById("lbl-unidade").style.display = loja ? "none" : "";
   document.getElementById("dev-normal").style.display = loja ? "none" : "";
   document.getElementById("dev-troca").style.display = loja ? "" : "none";
+  const blocoMov = document.getElementById("rel-mov-bloco");
+  if (blocoMov) blocoMov.style.display = M.usaMov ? "" : "none";
 
   const pessoaInp = document.querySelector('#form-retirada input[name="pessoa"]');
   document.getElementById("txt-pessoa-ret").textContent = loja ? "Cliente (opcional)" : "Para quem";
   pessoaInp.required = !loja;
   pessoaInp.placeholder = loja ? "Nome do cliente" : "Nome de quem retira";
-
-  // aba Caixa: só Lojinha e quem não é operador
-  const podeCaixa = loja && nivel !== "operador";
-  const tabCaixa = document.querySelector('.tab[data-tab="caixa"]');
-  if (tabCaixa) tabCaixa.style.display = podeCaixa ? "" : "none";
 }
 
 document.getElementById("btn-trocar").addEventListener("click", () => {
@@ -291,7 +355,7 @@ async function abrirUsuarios() {
 
 function linhaUsuario(u) {
   const niveis = ["pendente", "operador", "admin", "admin_geral"];
-  const mods = ["", "logistica", "copa", "loja"];
+  const mods = ["", "logistica", "copa", "loja", "secretaria", "saude"];
   const optN = niveis.map((n) => `<option value="${n}" ${u.nivel === n ? "selected" : ""}>${rotuloNivel(n)}</option>`).join("");
   const optM = mods.map((m) => `<option value="${m}" ${(u.modulo || "") === m ? "selected" : ""}>${m ? MODULOS[m].nome : "—"}</option>`).join("");
   const pend = u.nivel === "pendente";
@@ -356,7 +420,7 @@ formProduto.addEventListener("submit", async (e) => {
     modulo: MODULO,
     codigo,
     nome: f.get("nome").trim(),
-    tipo: ehLoja() ? "consumo" : f.get("tipo"),
+    tipo: MODULOS[MODULO].usaTipo ? f.get("tipo") : "consumo",
     unidade: ehLoja() ? "un" : (f.get("unidade") || "un").trim(),
     qtd_estoque: Number(f.get("qtd")) || 0,
     preco: Number(f.get("preco")) || 0,
@@ -861,6 +925,93 @@ function baixarCSV(nomeArquivo, cabecalho, linhas) {
   a.href = url; a.download = nomeArquivo + ".csv";
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
+}
+
+// ============================================================
+// TAREFAS / ATIVIDADES (Secretaria)
+// ============================================================
+function fmtDataCurta(d) {
+  if (!d) return "";
+  const [y, m, dd] = String(d).slice(0, 10).split("-");
+  return `${dd}/${m}/${y}`;
+}
+const hojeISO = () => new Date().toISOString().slice(0, 10);
+
+document.getElementById("form-tarefa").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const desc = (f.get("descricao") || "").trim();
+  if (!desc) return;
+  try {
+    await db.inserirTarefa({
+      modulo: MODULO, descricao: desc,
+      responsavel: (f.get("responsavel") || "").trim() || null,
+      previsao: f.get("previsao") || null, concluida: false,
+    });
+    e.target.reset(); msg("✅ Tarefa adicionada"); carregarTarefas();
+  } catch (err) { msg("Erro: " + err.message, true); }
+});
+
+async function carregarTarefas() {
+  let data;
+  try { data = await db.listarTarefas(MODULO); }
+  catch (err) { return msg("Erro: " + err.message, true); }
+  const box = document.getElementById("lista-tarefas");
+  if (!data.length) { box.innerHTML = '<p class="vazio">Nenhuma tarefa.</p>'; return; }
+  box.innerHTML = data.map((t) => {
+    const atrasada = t.previsao && !t.concluida && t.previsao < hojeISO();
+    const prev = t.previsao
+      ? `previsão: <b class="${atrasada ? "zerado" : ""}">${fmtDataCurta(t.previsao)}${atrasada ? " (atrasada)" : ""}</b>`
+      : "sem previsão";
+    return `<div class="item ${t.concluida ? "feito" : ""}">
+      <div class="item-main">
+        <label class="chk"><input type="checkbox" ${t.concluida ? "checked" : ""} data-tog="${t.id}"> <b>${t.descricao}</b></label>
+        <button class="link" data-del="${t.id}">excluir</button>
+      </div>
+      <div class="item-sub">${t.responsavel ? "resp: <b>" + t.responsavel + "</b> · " : ""}${prev}${t.concluida ? " · ✅ concluída" : ""}</div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-tog]").forEach((c) =>
+    (c.onchange = () => db.atualizarTarefa(Number(c.dataset.tog), { concluida: c.checked }).then(carregarTarefas)));
+  box.querySelectorAll("[data-del]").forEach((b) =>
+    (b.onclick = () => { if (confirm("Excluir tarefa?")) db.excluirTarefa(Number(b.dataset.del)).then(carregarTarefas); }));
+}
+
+// ============================================================
+// OPORTUNIDADES DE MELHORIA (Secretaria)
+// ============================================================
+document.getElementById("form-melhoria").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const desc = (f.get("descricao") || "").trim();
+  if (!desc) return;
+  try {
+    await db.inserirMelhoria({
+      modulo: MODULO, descricao: desc,
+      responsavel: (f.get("responsavel") || "").trim() || null, concluida: false,
+    });
+    e.target.reset(); msg("✅ Melhoria adicionada"); carregarMelhorias();
+  } catch (err) { msg("Erro: " + err.message, true); }
+});
+
+async function carregarMelhorias() {
+  let data;
+  try { data = await db.listarMelhorias(MODULO); }
+  catch (err) { return msg("Erro: " + err.message, true); }
+  const box = document.getElementById("lista-melhorias");
+  if (!data.length) { box.innerHTML = '<p class="vazio">Nenhuma melhoria lançada.</p>'; return; }
+  box.innerHTML = data.map((t) => `
+    <div class="item ${t.concluida ? "feito" : ""}">
+      <div class="item-main">
+        <label class="chk"><input type="checkbox" ${t.concluida ? "checked" : ""} data-tog="${t.id}"> <b>${t.descricao}</b></label>
+        <button class="link" data-del="${t.id}">excluir</button>
+      </div>
+      <div class="item-sub">${t.responsavel ? "resp: <b>" + t.responsavel + "</b> · " : ""}${t.concluida ? "✅ implementada" : "aberta"} · ${fmtDataCurta(t.criado_em)}</div>
+    </div>`).join("");
+  box.querySelectorAll("[data-tog]").forEach((c) =>
+    (c.onchange = () => db.atualizarMelhoria(Number(c.dataset.tog), { concluida: c.checked }).then(carregarMelhorias)));
+  box.querySelectorAll("[data-del]").forEach((b) =>
+    (b.onclick = () => { if (confirm("Excluir melhoria?")) db.excluirMelhoria(Number(b.dataset.del)).then(carregarMelhorias); }));
 }
 
 // ============================================================

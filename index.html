@@ -77,6 +77,14 @@
         <span class="mod-ic">🛍️</span>
         <span class="mod-nome">Lojinha</span>
       </button>
+      <button class="mod-card mod-secretaria" data-modulo="secretaria">
+        <span class="mod-ic">🗂️</span>
+        <span class="mod-nome">Secretaria</span>
+      </button>
+      <button class="mod-card mod-saude" data-modulo="saude">
+        <span class="mod-ic">🏥</span>
+        <span class="mod-nome">Saúde</span>
+      </button>
     </div>
     <div id="status-inicial" class="status"></div>
     <div class="modulo-rodape">
@@ -121,6 +129,8 @@
       <button class="tab" data-tab="movimentacoes">Movimentações</button>
       <button class="tab" data-tab="relatorios">Relatórios</button>
       <button class="tab" data-tab="caixa" style="display:none">Caixa</button>
+      <button class="tab" data-tab="tarefas" style="display:none">Tarefas</button>
+      <button class="tab" data-tab="melhorias" style="display:none">Melhorias</button>
     </nav>
 
     <!-- PRODUTOS -->
@@ -299,24 +309,26 @@
       </div>
       <div id="rel-inventario" class="rel-box"></div>
 
-      <h2>🔁 Relatório de Movimentação</h2>
-      <p class="hint">Entradas e saídas com data e hora. Filtre por período (opcional).</p>
-      <div class="row">
-        <label>De
-          <input id="mov-de" type="date" />
-        </label>
-        <label>Até
-          <input id="mov-ate" type="date" />
-        </label>
-        <label>&nbsp;
-          <button class="btn-sec" id="mov-filtrar">Aplicar filtro</button>
-        </label>
+      <div id="rel-mov-bloco">
+        <h2>🔁 Relatório de Movimentação</h2>
+        <p class="hint">Entradas e saídas com data e hora. Filtre por período (opcional).</p>
+        <div class="row">
+          <label>De
+            <input id="mov-de" type="date" />
+          </label>
+          <label>Até
+            <input id="mov-ate" type="date" />
+          </label>
+          <label>&nbsp;
+            <button class="btn-sec" id="mov-filtrar">Aplicar filtro</button>
+          </label>
+        </div>
+        <div class="rel-acoes">
+          <button class="btn-sec" data-rel="mov-print">🖨️ Imprimir</button>
+          <button class="btn-sec" data-rel="mov-csv">⬇️ Baixar CSV (Excel)</button>
+        </div>
+        <div id="rel-movimentacao" class="rel-box"></div>
       </div>
-      <div class="rel-acoes">
-        <button class="btn-sec" data-rel="mov-print">🖨️ Imprimir</button>
-        <button class="btn-sec" data-rel="mov-csv">⬇️ Baixar CSV (Excel)</button>
-      </div>
-      <div id="rel-movimentacao" class="rel-box"></div>
     </section>
 
     <!-- CAIXA (só Lojinha) -->
@@ -339,6 +351,41 @@
         <button class="btn-sec" data-rel="caixa-csv">⬇️ Baixar CSV (Excel)</button>
       </div>
       <div id="rel-caixa" class="rel-box"></div>
+    </section>
+
+    <!-- TAREFAS / ATIVIDADES (Secretaria) -->
+    <section id="tab-tarefas" class="panel">
+      <h2>✅ Atividades / Tarefas</h2>
+      <form id="form-tarefa" class="card">
+        <label>Descrição
+          <input name="descricao" required placeholder="O que precisa ser feito" />
+        </label>
+        <div class="row">
+          <label>Responsável
+            <input name="responsavel" placeholder="Quem é responsável" />
+          </label>
+          <label>Previsão
+            <input name="previsao" type="date" />
+          </label>
+        </div>
+        <button type="submit">Adicionar tarefa</button>
+      </form>
+      <div id="lista-tarefas" class="lista"></div>
+    </section>
+
+    <!-- OPORTUNIDADES DE MELHORIA (Secretaria) -->
+    <section id="tab-melhorias" class="panel">
+      <h2>💡 Oportunidades de Melhoria</h2>
+      <form id="form-melhoria" class="card">
+        <label>Descrição
+          <input name="descricao" required placeholder="Ideia ou melhoria" />
+        </label>
+        <label>Responsável (opcional)
+          <input name="responsavel" placeholder="Quem propôs / vai tocar" />
+        </label>
+        <button type="submit">Adicionar melhoria</button>
+      </form>
+      <div id="lista-melhorias" class="lista"></div>
     </section>
   </div>
 
