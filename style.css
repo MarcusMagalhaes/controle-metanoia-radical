@@ -186,6 +186,18 @@ button:hover { filter: brightness(1.08); }
 .user-email { font-size: 12px; color: var(--suave); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn-sair2 { background: #c9c6bf; color: var(--preto); }
 
+/* ---------- Toast (mensagens) ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 140%);
+  background: #1A1A1A; color: #fff; padding: 13px 20px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.28);
+  opacity: 0; transition: transform .28s ease, opacity .28s ease; z-index: 2000;
+  max-width: 92vw; text-align: center; pointer-events: none;
+}
+.toast.show { transform: translate(-50%, 0); opacity: 1; }
+.toast.toast-ok { background: #1f7a44; }
+.toast.toast-erro { background: #c0271d; }
+
 /* ---------- Tarefas / Melhorias ---------- */
 .chk { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
 .chk input { width: 18px; height: 18px; flex: 0 0 auto; }

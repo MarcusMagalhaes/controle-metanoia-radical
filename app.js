@@ -10,26 +10,31 @@ const statusInicial = document.getElementById("status-inicial");
 const MODULOS = {
   logistica: {
     nome: "Logística", prefixo: "LOG", icone: "📦", usaTipo: true, usaMov: true,
+    exemploNome: "Fio flexível 2,5mm",
     abas: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios"],
     abasOp: ["retirada", "devolucao"],
   },
   copa: {
     nome: "Copa / Cozinha", prefixo: "COP", icone: "🍽️", usaTipo: true, usaMov: true,
+    exemploNome: "Café torrado 500g",
     abas: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios"],
     abasOp: ["retirada", "devolucao"],
   },
   loja: {
     nome: "Lojinha", prefixo: "LOJ", icone: "🛍️", venda: true, usaMov: true,
+    exemploNome: "Camisa Branca P",
     abas: ["produtos", "retirada", "devolucao", "movimentacoes", "relatorios", "caixa"],
     abasOp: ["retirada", "devolucao"],
   },
   secretaria: {
     nome: "Secretaria", prefixo: "SEC", icone: "🗂️", usaMov: false,
+    exemploNome: "Papel A4 (resma)",
     abas: ["produtos", "relatorios", "tarefas", "melhorias"],
     abasOp: ["tarefas", "melhorias"],
   },
   saude: {
     nome: "Saúde", prefixo: "SAU", icone: "🏥", usaMov: false,
+    exemploNome: "Luva descartável (caixa)",
     abas: ["produtos", "relatorios"],
     abasOp: ["relatorios"],
   },
@@ -327,6 +332,12 @@ function configurarUIModulo(mod) {
   document.getElementById("txt-pessoa-ret").textContent = loja ? "Cliente (opcional)" : "Para quem";
   pessoaInp.required = !loja;
   pessoaInp.placeholder = loja ? "Nome do cliente" : "Nome de quem retira";
+
+  // placeholders do cadastro conforme o módulo
+  const nomeInp = document.querySelector('#form-produto input[name="nome"]');
+  const codInp = document.querySelector('#form-produto input[name="codigo"]');
+  if (nomeInp) nomeInp.placeholder = "Ex: " + (M.exemploNome || "Nome do produto");
+  if (codInp) codInp.placeholder = M.prefixo + "-0001";
 }
 
 document.getElementById("btn-trocar").addEventListener("click", () => {
@@ -391,10 +402,16 @@ document.querySelectorAll(".tab").forEach((tab) => {
 // ============================================================
 // Helpers
 // ============================================================
+let toastTimer = null;
 function msg(texto, erro = false) {
-  statusEl.textContent = texto;
-  statusEl.classList.toggle("erro", erro);
-  if (!erro) setTimeout(() => (statusEl.textContent = ""), 3000);
+  const t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = texto;
+  t.classList.toggle("toast-erro", erro);
+  t.classList.toggle("toast-ok", !erro);
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), erro ? 5000 : 3000);
 }
 
 async function proximoCodigo() {

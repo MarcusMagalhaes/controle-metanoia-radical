@@ -56,6 +56,23 @@ O módulo **Lojinha** funciona como loja, não como estoque de uso/consumo:
 
 > ⚠️ Rode `loja-venda.sql` no Supabase **antes** de subir esta versão (adiciona as colunas `preco`, `forma_pagamento`, `valor`). Sem isso, os registros dão erro de "coluna não existe".
 
+## Backup automático diário (GitHub Actions)
+Roda todo dia às 03:00 (Brasília) e salva a base em `backups/<dia-da-semana>.json` (segunda…domingo), sobrepondo a cada semana → no máximo 7 dias. Só grava se a base tiver dados. Bônus: o acesso diário **mantém o projeto Supabase ativo** (evita o bloqueio por 7 dias sem uso).
+
+**Ativar (uma vez):**
+1. Supabase → *Project Settings* → *API* → copie a chave **`service_role`** (secreta).
+2. GitHub → repo → *Settings* → *Secrets and variables* → *Actions* → *New repository secret*:
+   - Name: `SUPABASE_SERVICE_ROLE`
+   - Secret: cole a chave service_role.
+3. (Para restaurar depois) rode uma vez o `identity-by-default.sql` no Supabase.
+
+**Rodar na hora:** repo → aba *Actions* → *Backup diário Supabase* → *Run workflow*.
+
+**Restaurar:** com as variáveis de ambiente setadas, rode local:
+```bash
+SUPABASE_URL=https://apluerrzjiijhhlkyumq.supabase.co SUPABASE_SERVICE_ROLE=xxxx node scripts/restore.mjs backups/segunda.json
+```
+
 ## Módulos (ambientes)
 Na entrada, escolhe o ambiente. Dados **totalmente separados** por módulo. Botão **Trocar** no topo alterna (só admin_geral). Cada um tem um prefixo de código.
 - **Logística** (📦, vermelho) e **Copa / Cozinha** (🍽️, laranja): almoxarifado completo — cadastro, retirada, devolução, movimentações, relatórios.
