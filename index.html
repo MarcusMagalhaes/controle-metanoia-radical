@@ -104,7 +104,13 @@
     <div id="lista-backups" class="lista"></div>
     <div id="backup-detalhe" class="card hidden">
       <div id="backup-info"></div>
-      <p class="hint">⚠️ Insere os registros que <b>faltam</b> (não sobrescreve nem apaga o que já existe) — ideal para recarregar uma base zerada. Exige o <code>identity-by-default.sql</code> rodado uma vez.</p>
+      <label>Modo de restauração
+        <select id="backup-modo">
+          <option value="completar">Completar — só adiciona o que falta (não apaga)</option>
+          <option value="substituir">Substituir — base fica idêntica ao backup (apaga extras)</option>
+        </select>
+      </label>
+      <p class="hint">⚠️ <b>Completar</b>: insere só o que falta, não mexe no resto. <b>Substituir</b>: apaga TUDO e recarrega o backup (volta no tempo). Exige <code>identity-by-default.sql</code>; o modo Substituir exige também <code>restore-substituir.sql</code>.</p>
       <button id="btn-restaurar" class="btn-sec">Restaurar este backup</button>
       <div id="backup-log" class="status"></div>
     </div>

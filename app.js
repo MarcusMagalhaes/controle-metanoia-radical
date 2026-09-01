@@ -447,28 +447,44 @@ async function carregarBackup(url) {
 
 document.getElementById("btn-restaurar").onclick = async () => {
   if (!backupSelecionado) return;
-  if (!confirm("Restaurar este backup? Os registros serão mesclados por id na base atual.")) return;
-  const log = document.getElementById("backup-log");
+  const modo = document.getElementById("backup-modo").value;
   const dados = backupSelecionado.dados || {};
-  const ORDEM = ["produtos", "tarefas", "melhorias", "movimentacoes"]; // produtos antes de movimentacoes (FK)
+  const log = document.getElementById("backup-log");
+  const linhas = [];
+  const mostra = () => (log.innerHTML = linhas.join("<br>"));
   log.classList.remove("erro");
-  log.textContent = "Restaurando...";
-  let linhas = [];
-  for (const t of ORDEM) {
-    const rows = dados[t] || [];
-    if (!rows.length) { linhas.push(`${t}: vazio`); continue; }
-    // ignoreDuplicates: insere só o que falta (ON CONFLICT DO NOTHING) — usa só permissão de insert
-    const { error } = await sbClient.from(t).upsert(rows, { onConflict: "id", ignoreDuplicates: true });
-    if (error) {
-      linhas.push(`${t}: ERRO — ${error.message}`);
-      log.classList.add("erro");
-    } else {
-      linhas.push(`${t}: ${rows.length} ✓`);
+
+  if (modo === "substituir") {
+    if (!confirm("SUBSTITUIR: apaga TODOS os dados atuais (produtos, movimentações, tarefas, melhorias) e recarrega exatamente o backup. Esta ação não tem volta. Continuar?")) return;
+    linhas.push("Apagando base atual..."); mostra();
+    // apaga movimentacoes antes de produtos (FK)
+    for (const t of ["movimentacoes", "produtos", "tarefas", "melhorias"]) {
+      const { error } = await sbClient.from(t).delete().gte("id", 0);
+      if (error) { linhas.push(`limpar ${t}: ERRO — ${error.message}`); log.classList.add("erro"); mostra(); return; }
+      linhas.push(`limpar ${t}: ok`); mostra();
     }
-    log.innerHTML = linhas.join("<br>");
+    // insere na ordem (produtos antes de movimentacoes)
+    for (const t of ["produtos", "tarefas", "melhorias", "movimentacoes"]) {
+      const rows = dados[t] || [];
+      if (!rows.length) { linhas.push(`${t}: vazio`); mostra(); continue; }
+      const { error } = await sbClient.from(t).insert(rows);
+      if (error) { linhas.push(`${t}: ERRO — ${error.message}`); log.classList.add("erro"); }
+      else linhas.push(`${t}: ${rows.length} ✓`);
+      mostra();
+    }
+  } else {
+    if (!confirm("Completar: adiciona só os registros que faltam. Não apaga nem sobrescreve nada. Continuar?")) return;
+    linhas.push("Restaurando (completar)..."); mostra();
+    for (const t of ["produtos", "tarefas", "melhorias", "movimentacoes"]) {
+      const rows = dados[t] || [];
+      if (!rows.length) { linhas.push(`${t}: vazio`); mostra(); continue; }
+      const { error } = await sbClient.from(t).upsert(rows, { onConflict: "id", ignoreDuplicates: true });
+      if (error) { linhas.push(`${t}: ERRO — ${error.message}`); log.classList.add("erro"); }
+      else linhas.push(`${t}: ${rows.length} ✓`);
+      mostra();
+    }
   }
-  linhas.push("Concluído.");
-  log.innerHTML = linhas.join("<br>");
+  linhas.push("Concluído."); mostra();
   msg("Restauração concluída");
 };
 
