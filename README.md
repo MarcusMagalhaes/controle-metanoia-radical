@@ -68,7 +68,9 @@ Roda todo dia às 03:00 (Brasília) e salva a base em `backups/<dia-da-semana>.j
 
 **Rodar na hora:** repo → aba *Actions* → *Backup diário Supabase* → *Run workflow*.
 
-**Restaurar:** com as variáveis de ambiente setadas, rode local:
+**Restaurar pelo app (admin):** logado como admin_geral → tela inicial → **♻️ Restaurar backup** → escolhe o dia → **Restaurar**. Roda no navegador com a sua sessão (sem chave secreta); grava produtos/movimentações/tarefas/melhorias (perfis se recriam no login). Exige o `identity-by-default.sql` rodado uma vez.
+
+**Restaurar por linha de comando:** com as variáveis de ambiente setadas, rode local:
 ```bash
 SUPABASE_URL=https://apluerrzjiijhhlkyumq.supabase.co SUPABASE_SERVICE_ROLE=xxxx node scripts/restore.mjs backups/segunda.json
 ```

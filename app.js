@@ -191,7 +191,7 @@ const db = usaSupabase ? SupaDB : LocalDB;
 // ============================================================
 let PERFIL = null, USER = null;
 
-const TELAS = ["tela-carregando", "tela-login", "tela-pendente", "tela-modulo", "tela-usuarios", "app"];
+const TELAS = ["tela-carregando", "tela-login", "tela-pendente", "tela-modulo", "tela-usuarios", "tela-backup", "app"];
 function mostrarTela(id) {
   TELAS.forEach((t) => document.getElementById(t).classList.toggle("hidden", t !== id));
 }
@@ -238,6 +238,7 @@ function rotear() {
   const ehGeral = PERFIL.nivel === "admin_geral";
   document.getElementById("btn-trocar").style.display = ehGeral ? "" : "none";
   document.getElementById("btn-usuarios").style.display = ehGeral ? "" : "none";
+  document.getElementById("btn-backup").style.display = (ehGeral && usaSupabase && cfg.GITHUB_REPO) ? "" : "none";
 
   if (PERFIL.nivel === "pendente") {
     document.getElementById("pendente-email").textContent = PERFIL.email || "";
@@ -391,6 +392,84 @@ async function salvarUsuario(id) {
   if (error) { alert("Erro: " + error.message); return; }
   abrirUsuarios();
 }
+
+// ============================================================
+// RESTAURAR BACKUP (só admin_geral) — lê backups do GitHub, grava via sessão
+// ============================================================
+let backupSelecionado = null;
+document.getElementById("btn-backup").onclick = abrirBackups;
+document.getElementById("btn-voltar-backup").onclick = () => mostrarTela("tela-modulo");
+
+async function abrirBackups() {
+  mostrarTela("tela-backup");
+  document.getElementById("backup-detalhe").classList.add("hidden");
+  document.getElementById("backup-log").textContent = "";
+  const box = document.getElementById("lista-backups");
+  box.innerHTML = '<p class="vazio">Carregando lista...</p>';
+  try {
+    const r = await fetch(`https://api.github.com/repos/${cfg.GITHUB_REPO}/contents/backups`);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const arquivos = (await r.json()).filter((f) => f.name.endsWith(".json"));
+    if (!arquivos.length) { box.innerHTML = '<p class="vazio">Nenhum backup ainda.</p>'; return; }
+    const ORD = { segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6, domingo: 7 };
+    arquivos.sort((a, b) => (ORD[a.name.replace(".json", "")] || 9) - (ORD[b.name.replace(".json", "")] || 9));
+    box.innerHTML = arquivos.map((f) => {
+      const dia = f.name.replace(".json", "");
+      return `<div class="item"><div class="item-main"><b style="text-transform:capitalize">${dia}</b>
+        <button class="btn-sec" data-bkp="${encodeURIComponent(f.download_url)}">Ver / restaurar</button></div></div>`;
+    }).join("");
+    box.querySelectorAll("[data-bkp]").forEach((b) =>
+      (b.onclick = () => carregarBackup(decodeURIComponent(b.dataset.bkp))));
+  } catch (err) {
+    box.innerHTML = '<p class="vazio">Erro ao listar backups: ' + err.message + "</p>";
+  }
+}
+
+async function carregarBackup(url) {
+  const det = document.getElementById("backup-detalhe");
+  const info = document.getElementById("backup-info");
+  document.getElementById("backup-log").textContent = "";
+  info.innerHTML = "Carregando...";
+  det.classList.remove("hidden");
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    backupSelecionado = await r.json();
+    const c = backupSelecionado.contagens || {};
+    info.innerHTML = `<b style="text-transform:capitalize">${backupSelecionado.dia}</b> · gerado em ${backupSelecionado.data_br}<br>
+      produtos: <b>${c.produtos || 0}</b> · movimentações: <b>${c.movimentacoes || 0}</b> ·
+      tarefas: <b>${c.tarefas || 0}</b> · melhorias: <b>${c.melhorias || 0}</b>`;
+  } catch (err) {
+    info.innerHTML = "Erro ao ler backup: " + err.message;
+    backupSelecionado = null;
+  }
+}
+
+document.getElementById("btn-restaurar").onclick = async () => {
+  if (!backupSelecionado) return;
+  if (!confirm("Restaurar este backup? Os registros serão mesclados por id na base atual.")) return;
+  const log = document.getElementById("backup-log");
+  const dados = backupSelecionado.dados || {};
+  const ORDEM = ["produtos", "tarefas", "melhorias", "movimentacoes"]; // produtos antes de movimentacoes (FK)
+  log.classList.remove("erro");
+  log.textContent = "Restaurando...";
+  let linhas = [];
+  for (const t of ORDEM) {
+    const rows = dados[t] || [];
+    if (!rows.length) { linhas.push(`${t}: vazio`); continue; }
+    const { error } = await sbClient.from(t).upsert(rows, { onConflict: "id" });
+    if (error) {
+      linhas.push(`${t}: ERRO — ${error.message}`);
+      log.classList.add("erro");
+    } else {
+      linhas.push(`${t}: ${rows.length} ✓`);
+    }
+    log.innerHTML = linhas.join("<br>");
+  }
+  linhas.push("Concluído.");
+  log.innerHTML = linhas.join("<br>");
+  msg("Restauração concluída");
+};
 
 // ============================================================
 // Navegação por abas

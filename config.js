@@ -8,4 +8,6 @@
 window.APP_CONFIG = {
   SUPABASE_URL: "https://apluerrzjiijhhlkyumq.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_ZCuoIjJIohtjcv9fK-9QVA_dPLl6BCt",
+  // Repositório GitHub onde ficam os backups (usado pelo restaurador no modo Admin)
+  GITHUB_REPO: "MarcusMagalhaes/controle-metanoia-radical",
 };

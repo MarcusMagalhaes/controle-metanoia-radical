@@ -89,7 +89,24 @@
     <div id="status-inicial" class="status"></div>
     <div class="modulo-rodape">
       <button id="btn-usuarios" class="btn-sec" style="display:none">👤 Gerenciar usuários</button>
+      <button id="btn-backup" class="btn-sec" style="display:none">♻️ Restaurar backup</button>
       <button id="btn-sair" class="btn-link-sair">Sair</button>
+    </div>
+  </section>
+
+  <!-- ============ TELA: RESTAURAR BACKUP (admin geral) ============ -->
+  <section id="tela-backup" class="tela-usuarios hidden">
+    <div class="usuarios-topo">
+      <button id="btn-voltar-backup" class="btn-sec">← Voltar</button>
+      <h1 class="titulo-app">Restaurar backup</h1>
+    </div>
+    <p class="sub">Escolha um backup para recarregar na base. Restaura produtos, movimentações, tarefas e melhorias (perfis se recriam no login).</p>
+    <div id="lista-backups" class="lista"></div>
+    <div id="backup-detalhe" class="card hidden">
+      <div id="backup-info"></div>
+      <p class="hint">⚠️ O restore <b>mescla por id</b> (não apaga o que já existe). Exige o <code>identity-by-default.sql</code> rodado uma vez no Supabase.</p>
+      <button id="btn-restaurar" class="btn-sec">Restaurar este backup</button>
+      <div id="backup-log" class="status"></div>
     </div>
   </section>
 
