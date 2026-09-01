@@ -104,7 +104,7 @@
     <div id="lista-backups" class="lista"></div>
     <div id="backup-detalhe" class="card hidden">
       <div id="backup-info"></div>
-      <p class="hint">⚠️ O restore <b>mescla por id</b> (não apaga o que já existe). Exige o <code>identity-by-default.sql</code> rodado uma vez no Supabase.</p>
+      <p class="hint">⚠️ Insere os registros que <b>faltam</b> (não sobrescreve nem apaga o que já existe) — ideal para recarregar uma base zerada. Exige o <code>identity-by-default.sql</code> rodado uma vez.</p>
       <button id="btn-restaurar" class="btn-sec">Restaurar este backup</button>
       <div id="backup-log" class="status"></div>
     </div>

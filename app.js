@@ -457,7 +457,8 @@ document.getElementById("btn-restaurar").onclick = async () => {
   for (const t of ORDEM) {
     const rows = dados[t] || [];
     if (!rows.length) { linhas.push(`${t}: vazio`); continue; }
-    const { error } = await sbClient.from(t).upsert(rows, { onConflict: "id" });
+    // ignoreDuplicates: insere só o que falta (ON CONFLICT DO NOTHING) — usa só permissão de insert
+    const { error } = await sbClient.from(t).upsert(rows, { onConflict: "id", ignoreDuplicates: true });
     if (error) {
       linhas.push(`${t}: ERRO — ${error.message}`);
       log.classList.add("erro");
