@@ -1,0 +1,204 @@
+{
+  "gerado_em": "2026-09-07T11:32:49.219Z",
+  "data_br": "07/09/2026, 08:32",
+  "dia": "segunda",
+  "contagens": {
+    "produtos": 6,
+    "movimentacoes": 5,
+    "perfis": 7,
+    "tarefas": 0,
+    "melhorias": 0
+  },
+  "dados": {
+    "produtos": [
+      {
+        "id": 2,
+        "modulo": "logistica",
+        "codigo": "LOG-0001",
+        "nome": "Fio flexivel 2,5mm",
+        "tipo": "consumo",
+        "unidade": "m",
+        "qtd_estoque": 100,
+        "criado_em": "2026-08-14T20:44:38.858018+00:00",
+        "preco": 0
+      },
+      {
+        "id": 3,
+        "modulo": "logistica",
+        "codigo": "LOG-0002",
+        "nome": "Furadeira",
+        "tipo": "uso",
+        "unidade": "un",
+        "qtd_estoque": 2,
+        "criado_em": "2026-08-14T20:44:39.679976+00:00",
+        "preco": 0
+      },
+      {
+        "id": 4,
+        "modulo": "copa",
+        "codigo": "0044",
+        "nome": "Óleo de soja",
+        "tipo": "consumo",
+        "unidade": "6",
+        "qtd_estoque": 0,
+        "criado_em": "2026-08-14T20:54:24.979885+00:00",
+        "preco": 0
+      },
+      {
+        "id": 5,
+        "modulo": "logistica",
+        "codigo": "LOG-0003",
+        "nome": "Arame",
+        "tipo": "consumo",
+        "unidade": "m",
+        "qtd_estoque": 5,
+        "criado_em": "2026-09-01T22:10:45.328221+00:00",
+        "preco": 0
+      },
+      {
+        "id": 6,
+        "modulo": "loja",
+        "codigo": "LOJ-0001",
+        "nome": "Camisa Branca",
+        "tipo": "consumo",
+        "unidade": "un",
+        "qtd_estoque": 99,
+        "criado_em": "2026-09-01T22:16:12.443134+00:00",
+        "preco": 50
+      },
+      {
+        "id": 7,
+        "modulo": "loja",
+        "codigo": "LOJ-0002",
+        "nome": "Camisa Preta",
+        "tipo": "consumo",
+        "unidade": "un",
+        "qtd_estoque": 59,
+        "criado_em": "2026-09-01T22:17:18.909175+00:00",
+        "preco": 50
+      }
+    ],
+    "movimentacoes": [
+      {
+        "id": 1,
+        "modulo": "logistica",
+        "produto_id": 5,
+        "tipo": "saida",
+        "pessoa": "Rodrigo",
+        "quantidade": 10,
+        "observacao": null,
+        "criado_em": "2026-09-01T22:12:26.919575+00:00",
+        "forma_pagamento": null,
+        "valor": null
+      },
+      {
+        "id": 2,
+        "modulo": "logistica",
+        "produto_id": 5,
+        "tipo": "retorno",
+        "pessoa": "Rodrigo",
+        "quantidade": 5,
+        "observacao": null,
+        "criado_em": "2026-09-01T22:12:59.955318+00:00",
+        "forma_pagamento": null,
+        "valor": null
+      },
+      {
+        "id": 3,
+        "modulo": "loja",
+        "produto_id": 6,
+        "tipo": "saida",
+        "pessoa": "Consumidor",
+        "quantidade": 2,
+        "observacao": null,
+        "criado_em": "2026-09-01T22:16:48.998795+00:00",
+        "forma_pagamento": "pix",
+        "valor": 100
+      },
+      {
+        "id": 4,
+        "modulo": "loja",
+        "produto_id": 6,
+        "tipo": "retorno",
+        "pessoa": "Consumidor",
+        "quantidade": 1,
+        "observacao": "Troca: devolveu LOJ-0001, levou LOJ-0002",
+        "criado_em": "2026-09-01T22:17:39.781645+00:00",
+        "forma_pagamento": null,
+        "valor": null
+      },
+      {
+        "id": 5,
+        "modulo": "loja",
+        "produto_id": 7,
+        "tipo": "saida",
+        "pessoa": "Consumidor",
+        "quantidade": 1,
+        "observacao": "Troca por LOJ-0001",
+        "criado_em": "2026-09-01T22:17:40.351553+00:00",
+        "forma_pagamento": null,
+        "valor": null
+      }
+    ],
+    "perfis": [
+      {
+        "id": "e44a46cf-a9a8-4287-98de-a872a9f6d162",
+        "email": "markvpm@gmail.com",
+        "nome": "Marcus Magalhães",
+        "nivel": "admin_geral",
+        "modulo": null,
+        "criado_em": "2026-08-14T16:54:55.015801+00:00"
+      },
+      {
+        "id": "9acf86b2-0dd8-459c-9725-6334a897748b",
+        "email": "isabelaandradedamacena@gmail.com",
+        "nome": "Isabela Andrade Damacena",
+        "nivel": "admin",
+        "modulo": "loja",
+        "criado_em": "2026-08-14T17:35:17.501103+00:00"
+      },
+      {
+        "id": "74c75ab5-8fac-427a-8fba-f03d5d5796cd",
+        "email": "steffanyabonatom@outlook.com",
+        "nome": "steffanya bonato",
+        "nivel": "admin",
+        "modulo": "logistica",
+        "criado_em": "2026-08-14T18:03:08.82735+00:00"
+      },
+      {
+        "id": "68a9a051-3db6-4322-a79a-26a066a12c3a",
+        "email": "leoncionaque1@gmail.com",
+        "nome": "Leo Farias",
+        "nivel": "admin_geral",
+        "modulo": null,
+        "criado_em": "2026-08-14T20:16:07.389711+00:00"
+      },
+      {
+        "id": "cdc7a6cc-4dfc-4700-ba2a-5d29ca69c285",
+        "email": "eduardodamacenadesouza552@gmail.com",
+        "nome": "Batista Shallom Naque",
+        "nivel": "admin_geral",
+        "modulo": null,
+        "criado_em": "2026-08-14T20:28:54.678753+00:00"
+      },
+      {
+        "id": "df24db34-b1cc-4080-af3a-d489f638d4e9",
+        "email": "cnos86@gmail.com",
+        "nome": "Cínthia Neves",
+        "nivel": "admin_geral",
+        "modulo": null,
+        "criado_em": "2026-08-15T13:20:27.121891+00:00"
+      },
+      {
+        "id": "7314ca54-9dfb-4a74-bcf4-5e4e8466377d",
+        "email": "cinthia.neves@educacao.mg.gov.br",
+        "nome": "cinthia neves",
+        "nivel": "pendente",
+        "modulo": null,
+        "criado_em": "2026-09-02T00:27:48.734382+00:00"
+      }
+    ],
+    "tarefas": [],
+    "melhorias": []
+  }
+}
